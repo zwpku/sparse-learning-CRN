@@ -1,0 +1,13 @@
+
+1. Run ./ssa to generate N_traj trajectories.
+
+2. Run ./prepare to analyze the trajectories (i.e., to figure out number of
+channels), and to prepare basis functions. 
+   A file named "basis_funct_info.txt" under the directory ./output/ will be
+   generated.
+
+3. (Optional) Check and modify the file "./data/basis_funct_info.txt". This is necessary if you want to change the number of basis functions for each channel, or to modify the initial values of the parameters.
+
+4. Run ./sparse_infer to solve the L1 sparse optimization problem. 
+
+
