@@ -1,4 +1,4 @@
-#include "ssa.h"
+#include "sparse_learning.h"
 #include <iostream>
 #include "libconfig.h++"
  
@@ -20,14 +20,18 @@ int read_value(Config & cfg, string  name, T & val)
   return 0;
 }
 
-// read parameters from file ssa.cfg 
+/*
+ *
+ * Read parameters from the file: sparse_learning.cfg 
+ *
+ */
 
 int read_config() 
 {
   Config cfg;
 
   try {
-    cfg.readFile("ssa.cfg");
+    cfg.readFile("sparse_learning.cfg");
   }
   catch (const FileIOException &fioex)
   {
@@ -85,7 +89,11 @@ int read_config()
   if ( read_value(cfg, string("know_reactions_flag"), know_reactions_flag) < 0 )
     return -1;
 
-  // if reaction types are known, then use basis x*(x-1) instead of x*x
+  /*
+   * If reaction types are known, then use basis x*(x-1) instead of x*x.
+   *
+   * See the document in the file prepare.cpp for details.
+   */
   if (know_reactions_flag == 1) xx_basis_flag = 0 ;
 
   return 0 ;

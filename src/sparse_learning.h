@@ -17,9 +17,9 @@
 
 using namespace std ;
 
-// dim : number of species
+// n : number of species
 // R :   number of reactions
-extern int dim, R ;
+extern int n, R ;
 
 // num_basis : number of basis functions
 extern int num_basis ;
@@ -131,10 +131,11 @@ double ssa(double & t_now, vector<int> & c_state, vector<int> & next_state) ;
 
 double val_basis_funct(int basis_idx, vector<int> &state) ;
 double shrinkage(double x, double lambda) ;
-double grad_log_likelihood(vector<vector<double> > & coeff_vec, vector<vector<double> > & grad_coeff) ;
+void grad_log_likelihood(vector<vector<double> > & coeff_vec, vector<vector<double> > & grad_coeff) ;
 double log_likelihood(vector<vector<double> > & coeff_vec) ;
 double val_ai(int channel_idx, vector<int> &state, vector<vector<double> > & coeff_vec ) ;
 double val_basis_funct(int basis_idx, vector<int> &state) ;
 void print_grad( vector<vector<double> > & coeff_vec ) ;
 double l1_norm( vector<vector<double> > & coeff_vec, vector<vector<double> > & weights ) ;
 double epsL1_norm( vector<vector<double> > & coeff_vec, vector<vector<double> > & weights ) ;
+

@@ -1,6 +1,6 @@
-#include "ssa.h"
+#include "sparse_learning.h"
 
-int dim, R, N_traj ;
+int n , R , N_traj ;
 int mpi_rank, mpi_size, local_N_traj, local_traj_start_idx ;
 
 double T , total_T ;

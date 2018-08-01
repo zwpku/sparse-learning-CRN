@@ -1,7 +1,13 @@
-#include "ssa.h"
+#include "sparse_learning.h"
 
 /*
- * generate trajectories using SSA method
+ * Generate trajectories using SSA method.
+ *
+ * Each local processor generates local_N_traj trajectories.
+ *
+ * In total, N_traj trajectories of length (time) T will be saved under
+ * directory ./traj_data/
+ *
  */
 
 void gen_data() 
@@ -11,7 +17,7 @@ void gen_data()
   double t_now , tau ;
   vector<int> c_state , next_state ;
 
-  next_state.resize(dim) ;
+  next_state.resize(n) ;
 
   // each proccessor generates several (=local_N_traj) trajectories
   for ( int j = 0 ; j < local_N_traj ; j ++ )
@@ -28,7 +34,7 @@ void gen_data()
 	exit(1) ;
       }
 
-      out_file << dim << endl ;
+      out_file << n << endl ;
 
       t_now = 0 ; 
       c_state = init_state ;
@@ -41,7 +47,7 @@ void gen_data()
 	if (tau + t_now > T) tau = T - t_now ;
 
 	out_file << t_now << ' ' ;
-	for (int i = 0 ; i < dim ; i ++)
+	for (int i = 0 ; i < n ; i ++)
 	  out_file << c_state[i] << ' ' ;
 	out_file << tau << endl ;
 
@@ -61,6 +67,7 @@ int main ( int argc, char * argv[] )
   clock_t start , end ;
   char buf[30]; 
 
+  // prepare the file for printing log information
   sprintf(buf, "./log/ssa.log") ;
   if (init(buf) < 0) return -1 ;
 

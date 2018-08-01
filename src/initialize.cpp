@@ -1,14 +1,21 @@
-#include "ssa.h"
+#include "sparse_learning.h"
 
 int read_config() ;
 
-// initialize the seed of random numbers
+/* 
+ * Initialize the seed of random numbers
+ * The seeds depend on both the time of the machine and the index of the local processor 
+ *
+ */
 void init_rand_generator()
 {
   long is1, is2 ;
 
   char phrase[100] ;
   sprintf( phrase, "%ld", time(NULL) + mpi_rank ) ;
+
+  printf("%s", phrase) ;
+
   phrtsd(phrase, &is1, &is2) ;
   setall(is1, is2) ;
 
@@ -23,6 +30,10 @@ void init_rand_generator()
     fprintf(log_file, "\n");
   }
 }
+
+/*
+ * Read the information of reaction network from file
+ */
 
 void read_reactions()
 {
@@ -45,35 +56,35 @@ void read_reactions()
       exit(1) ;
     }
 
-  // read reaction number(R), state dimension (dim) 
-  cr >> R >> dim ;
+  // read reaction number(R) and state dimension (n) 
+  cr >> R >> n ;
 
   vvec_in.resize(R) ; vvec_out.resize(R) ; vvec.resize(R) ;
-  init_state.resize(dim) ;
+  init_state.resize(n) ;
   v_neg_idx_vec.resize(R) ;
   reactant_num.resize(R) ;
 
   // read the initial state
-  for (int j = 0 ; j < dim ; j ++)
+  for (int j = 0 ; j < n; j ++)
     cr >> init_state[j] ;
 
-  // read the info for each reaction 
+  // read the info of each reaction 
   for (int i = 0 ; i < R ; i ++)
   {
-    vvec_in[i].resize(dim) ; vvec_out[i].resize(dim) ; vvec[i].resize(dim) ;
+    vvec_in[i].resize(n) ; vvec_out[i].resize(n) ; vvec[i].resize(n) ;
     reactant_num[i] = 0 ;
     // read in vector of each reaction 
-    for (int j = 0 ; j < dim ; j ++)
+    for (int j = 0 ; j < n ; j ++)
     {
       cr >> vvec_in[i][j] ;
       reactant_num[i] += vvec_in[i][j] ;
     }
     // read out vector of each reaction 
-    for (int j = 0 ; j < dim ; j ++)
+    for (int j = 0 ; j < n ; j ++)
       cr >> vvec_out[i][j] ;
 
     // compute change vector of each reaction 
-    for (int j = 0 ; j < dim ; j ++)
+    for (int j = 0 ; j < n ; j ++)
     {
       vvec[i][j] = vvec_out[i][j] - vvec_in[i][j] ;
       if (vvec[i][j] < 0) v_neg_idx_vec[i].push_back(j) ;
@@ -135,8 +146,8 @@ int init(char * log_file_name )
   { // print information 
     if (know_reactions_flag == 1)
     {
-      printf( "\nNo. of Reactions = %d, \tDim = %d, \tNo. of Procs = %d\n", R, dim, mpi_size ) ;
-      fprintf( log_file, "\nNo. of Reactions = %d, \tDim = %d, \tNo. of Procs = %d\n", R, dim, mpi_size ) ;
+      printf( "\nNo. of Reactions = %d, \tDim = %d, \tNo. of Procs = %d\n", R, n, mpi_size ) ;
+      fprintf( log_file, "\nNo. of Reactions = %d, \tDim = %d, \tNo. of Procs = %d\n", R, n, mpi_size ) ;
     }
     else 
     {

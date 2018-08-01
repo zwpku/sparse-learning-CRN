@@ -10,23 +10,23 @@ INCLUDES=-I$(LOCAL_DIR)/include
 
 CC=mpicxx
 
-SOURCES=param.cpp config.cpp initialize.cpp utils.cpp ssa.cpp sparse_infer.cpp prepare.cpp
+SOURCES=param.cpp config.cpp initialize.cpp utils.cpp ssa.cpp sparse_learning.cpp prepare.cpp
 
 OBJECTS=$(SOURCES:.cpp=.o)
 
 .cpp.o:
 	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
 
-all : ssa sparse_infer prepare 
+all : ssa sparse_learning prepare 
 
 ssa : ssa.o param.o config.o initialize.o utils.o
 	$(CC) $^ -o $@ $(CFLAGS) $(LDFLAGS)
 
-sparse_infer : sparse_infer.o param.o config.o initialize.o utils.o
+sparse_learning : sparse_learning.o param.o config.o initialize.o utils.o
 	$(CC) $^ -o $@ $(CFLAGS) $(LDFLAGS)
 
 prepare : prepare.o param.o config.o initialize.o utils.o
 	$(CC) $^ -o $@ $(CFLAGS) $(LDFLAGS)
 
 clean:
-	rm -f $(OBJECTS) ssa sparse_infer prepare 
+	rm -f $(OBJECTS) ssa sparse_learning prepare 

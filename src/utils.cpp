@@ -1,6 +1,17 @@
-#include "ssa.h"
+#include "sparse_learning.h"
 
-// smooth rectifier G(x) = delta * ln(1+exp(x/delta)) 
+/*
+ *
+ * Smooth rectifier G_\delta(x) = \delta * ln(1+exp(x/\delta)) 
+ *
+ * G_\delta(x) is a smooth approximation of the activation function \max(x,0),
+ * since we know
+ *
+ * 	\lim_{\delta \rightarrow 0} G_\delta(x) = \max(x,0)
+ *
+ * g_cut:   	parameter used to avoid numerical error when x is too large or
+ * 		too small.
+ */
 double G(double x)
 {
   if (know_reactions_flag == 1) return x ;
@@ -11,7 +22,10 @@ double G(double x)
   }
 }
 
-// derivative of G
+/* 
+ * compute 1st derivative of G_\delta(x)
+ *
+ */
 double dG(double x)
 {
   if (know_reactions_flag == 1) return 1 ;
@@ -23,7 +37,9 @@ double dG(double x)
   }
 }
 
-// ln G(x)
+/* 
+ * Compute ln G(x)
+ */
 double logG(double x)
 {
   if (know_reactions_flag == 1) 
@@ -47,7 +63,9 @@ double logG(double x)
   }
 }
 
-// derivative of function ln G(x)
+/* 
+ * compute the 1st derivative of the function ln G(x)
+ */
 double d_logG(double x)
 {
   if (know_reactions_flag == 1) 
@@ -69,7 +87,9 @@ double d_logG(double x)
   }
 }
 
-// compute weighted l^1 norm of vector 
+/* 
+ * compute the weighted l^1 norm of vector 
+ */
 double l1_norm( vector<vector<double> > & coeff_vec, vector<vector<double> > & weights )
 {
   double s;
@@ -82,7 +102,10 @@ double l1_norm( vector<vector<double> > & coeff_vec, vector<vector<double> > & w
   return s ;
 }
 
-// the absolute value |x| is approximated by (|x|^2+\epsilon)^{1/2}
+/* 
+ * approximation of the weighted l^1 norm, where
+ * the absolute value |x| is approximated by (|x|^2+\epsilon)^{1/2}
+ */
 double epsL1_norm( vector<vector<double> > & coeff_vec, vector<vector<double> > & weights )
 {
   double s ;
@@ -96,12 +119,20 @@ double epsL1_norm( vector<vector<double> > & coeff_vec, vector<vector<double> > 
 }
 
 /* 
- test whether the reaction with index r_idx is possible to happen, i.e., if there are enough
- reactants , then return 1, otherwise return 0
+ * Test whether a reaction is possible to happen
+ *
+ * input :
+ *   in_vec :	current state of the system
+ *   r_idx :	index of the reaction
+ *
+ * return :  
+ *   1, 	if the reaction can happen, i.e., there are enough reactants 
+ *   0, 	otherwise
+ *
 */ 
 int try_reaction( vector<int> & in_vec, int r_idx )
 {
-  for (int i = 0 ; i < dim; i ++)
+  for (int i = 0 ; i < n ; i ++)
   {
     if ( in_vec[i] < vvec_in[r_idx][i] ) return 0 ;
   }
@@ -109,22 +140,50 @@ int try_reaction( vector<int> & in_vec, int r_idx )
   return 1 ;
 }
 
-// state : state vector
-// r_idx : reaction id 
+/*
+ * propensity of a given state 
+ *
+ * input:
+ * 	state: 	current state of the system
+ * 	r_idx: 	index of reaction 
+ *
+ * output: 
+ *   	Essentially, the function compute either 
+ *    		x, x*y, or x(x-1),
+ *   	depending on the state and the type of the reaction.
+ *   	See the document in the file prepare.cpp for details.
+ *
+ */
 double rate_of_state( vector<int> & state, int r_idx )
 {
   double tmp ;
 
   tmp = 1.0 ;
-  for ( int j = 0 ; j < dim ; j ++ )
+  for ( int j = 0 ; j < n ; j ++ )
     for ( int k = 0 ; k < vvec_in[r_idx][j] ; k ++ )
       tmp *= ( state[j] - k ) * 1.0 ;
 
   return tmp ;
 }
 
-// compute the propensity function a_0 of state, and return the list of
-// possible reactions 
+/* 
+ *
+ * compute the (total) propensity function a_0 of state, and return the list of
+ * possible reactions 
+ *
+ * input:
+ *   state: 			current state of the system
+ *   possible_reactions: 	list of indices of reactions that can occur at
+ *   				current state
+ *   a_vec:			propensity functions of each reaction that can
+ *   				occur
+ *
+ * return: 
+ *   a0: 			the (total) propensity function (equals to the
+ *   				sum of numbers in the vector a_vec)
+ *
+ */
+
 double ssa_a( vector<int> & state , vector<int> & possible_reactions , vector<double> & a_vec ) 
 {
   double a0 , tmp ;
@@ -144,20 +203,34 @@ double ssa_a( vector<int> & state , vector<int> & possible_reactions , vector<do
   return a0 ;
 }
 
-// update the state of the system using SSA method
+/*
+ *
+ * update the state of the system using SSA method
+ *
+ * input:
+ *   t_now : 		current time
+ *   c_state : 		current state
+ *   next_state : 	new state after the next reaction occurs
+ *
+ * return : 
+ *   tau : 		the waiting time before the next reaction occurs
+ *
+ */
 double ssa(double & t_now, vector<int> & c_state, vector<int> & next_state) 
 {
   double tmp_r1, tmp_r2 , tmp , tau , a0 ;
   vector<int> possible_reactions ;
   vector<double> a_vec ;
 
+  // compute the (total) propensity 
   a0 = ssa_a( c_state, possible_reactions, a_vec ) ;
 
+  // generate two random variables
   tmp_r1 = ranf() ; 
   tmp_r2 = ranf() * a0 ; 
 
   // compute waiting time
-  if (a0 > 0)
+  if (a0 > 0) // exponential distribution 
     tau = - 1.0 / a0 * log(tmp_r1) ;
   else  // no reaction can occur
     tau = T- t_now + 1 ;
@@ -172,7 +245,7 @@ double ssa(double & t_now, vector<int> & c_state, vector<int> & next_state)
       if (tmp > tmp_r2)
       {
 	// update the state of system by adding the change vector 
-	for (int k = 0 ; k < dim ; k ++)
+	for (int k = 0 ; k < n ; k ++)
 	  next_state[k] = c_state[k] + vvec[possible_reactions[j]][k] ;
 
 	break ;
@@ -183,7 +256,18 @@ double ssa(double & t_now, vector<int> & c_state, vector<int> & next_state)
   return tau ;
 }
 
-// compute the value of basis function
+/* 
+ *
+ * compute the value of basis function
+ *
+ * input:
+ *   basis_idx :	index of the basis function
+ *   state :		current state of the system
+ *
+ * output: 
+ *   s : 		value of the basis function
+ *
+ */
 double val_basis_funct(int basis_idx, vector<int> &state)
 {
   double s ;
@@ -199,6 +283,13 @@ double val_basis_funct(int basis_idx, vector<int> &state)
     idx1 = basis_vec[basis_idx][0] ;
     idx2 = basis_vec[basis_idx][1] ;
 
+    /* 
+     *
+     * When xx_basis_flag=0, the basis function is x*(x-1)
+     *
+     * When xx_basis_flag=1, the basis function is x*x
+     *
+     */
     if ( (idx1 == idx2) && (xx_basis_flag == 0) ) // x(x-1)
       s = state[idx1] * (state[idx1] - 1) ;
     else // x*y or x*x
@@ -208,26 +299,44 @@ double val_basis_funct(int basis_idx, vector<int> &state)
   return s ;
 }
 
-// compute propensity ai of a reaction channel based on basis functions
+/* 
+ *
+ * compute the propensity ai of a reaction channel based on basis functions
+ *
+ * input: 
+ *   channel_idx : 	index of the reaction channel
+ *   state :		current state of the system 
+ *   coeff_vec: 	current values of the unkonwn coefficients
+ *
+ * output: 
+ *   s :		linear combination of the basis functions
+ *
+ */
 double val_ai(int channel_idx, vector<int> &state, vector<vector<double> > & coeff_vec )
 {
   int idx ;
   double s ; 
   s = 0 ; 
+  // loop for each basis function used for this channel
   for ( int i = 0 ; i < coeff_vec[channel_idx].size() ; i ++ )
   {
+    // index of basis function
     idx = basis_index_per_channel[channel_idx][i] ;
+    // linear combination
     s += val_basis_funct(idx, state) * coeff_vec[channel_idx][i] ;
   }
   return s ;
 }
 
-// print some debug information
+/* 
+ * print debug information
+ *
+ */
 void dump_info(int idx, double tmp_ai, vector<int> & c_state, vector<vector<double> > & coeff_vec )
 {
   int ii ;
   printf("\t State : ");
-  for (int ii = 0 ; ii < dim ; ii ++)
+  for (int ii = 0 ; ii < n ; ii ++)
     printf("%d ", c_state[ii]); 
   printf("\n\t Channel idx: %d\n", idx) ;
   printf("\t Omega coefficients: ");
@@ -236,7 +345,25 @@ void dump_info(int idx, double tmp_ai, vector<int> & c_state, vector<vector<doub
   printf("\n\t ai = %.4lf\n", tmp_ai);
 }
 
-// compute log-likelihood function
+/* 
+ *
+ * Compute log-likelihood function
+ *
+ * If reaction types are known (know_reactions_flag=1), then function G(x)=x;
+ * Otherwise, G(x) is a smooth function approximating \max(x,0).
+ *
+ * This function requires all processors to work together. 
+ * Each processor does part of the computation using part of trajectory data.
+ * The final result is obtained by calling MPI_Allreduce. 
+ *
+ * input:
+ *   coeff_vec :	vector of coefficients  
+ *
+ * output:
+ *   logarithmic of the likelihood function (divided by the total length
+ *   of time)
+ *
+ */
 double log_likelihood(vector<vector<double> > & coeff_vec)
 {
   double s, tmp_ai, s1, ai, local_s ;
@@ -284,10 +411,25 @@ double log_likelihood(vector<vector<double> > & coeff_vec)
   // sum up all processors
   MPI_Allreduce(&local_s, &s, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD) ;
 
-  return s ;
+  return s / total_T ;
 }
 
-double grad_log_likelihood(vector<vector<double> > & coeff_vec, vector<vector<double> > & grad_coeff)
+/* 
+ *
+ * Compute gradient of the log-likelihood function.
+ *
+ * Again, this function requires all processors to work together. 
+ *
+ * input:
+ *   coeff_vec  :	vector of coefficients  
+ *
+ * at return:
+ *   grad_coeff :	contains the gradient of the log-likelihood function (divided by the total length
+ *   			of time)
+ *
+ */
+
+void grad_log_likelihood(vector<vector<double> > & coeff_vec, vector<vector<double> > & grad_coeff)
 {
   double s, tmp_ai, s1, tmp , local_s ;
   int idx , basis_idx ;
@@ -333,7 +475,9 @@ double grad_log_likelihood(vector<vector<double> > & coeff_vec, vector<vector<do
     }
 }
 
-// shrinkage operator: max(|x|-lambda, 0) * sgn(x)
+/* Shrinkage operator: 
+*   	max(|x|-lambda, 0) * sgn(x)
+*/
 double shrinkage(double x, double lambda)
 {
   if (x > lambda) 
@@ -359,7 +503,17 @@ void print_grad( vector<vector<double> > & coeff_vec )
   }
 }
 
-// check whether a directory exists or not 
+/* 
+ * check whether a directory exists or not 
+ *
+ * input:
+ *   dir_name :	path of the directory
+ *
+ * output:
+ *   0, 	if the directory exists or is created
+ *   -1,	if the directory doesn't exist and can not be created 
+ *
+ */
 int dir_check( char dir_name[] )
 {
   struct stat sd ;
