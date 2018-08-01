@@ -1,8 +1,9 @@
 #include "ssa.h"
 
+/*
+ * generate trajectories using SSA method
+ */
 
-// generate trajectories using SSA method
-```
 void gen_data() 
 {
   char buf[100] ;
@@ -52,7 +53,6 @@ void gen_data()
       out_file.close() ;
     }
 }
-```
 
 int main ( int argc, char * argv[] ) 
 {
