@@ -1,5 +1,11 @@
 #!/usr/bin/python
 
+"""
+
+  This code plots the functions G(x), G'(x), (ln G), and (ln G)' to files.
+
+"""
+
 from pylab import *
 from numpy import *
 
@@ -20,7 +26,7 @@ def Geps(x) :
       return 0.0 
   return delta * log( 1 + exp( x / delta ) ) 
 
-# G'(x)
+# G'(x) : the derivative of the function G(x)
 def d_Geps(x) :
   if x > g_cut * delta :
       return 1.0 
@@ -38,8 +44,10 @@ def d_logGeps(x) :
 
 # range of x, [-xb, xb] 
 xb = 3
+
 # number of discrete interval
 n = 200
+
 g_cut = 30 
     
 xvec = np.linspace( -xb, xb, n, endpoint=True )
@@ -47,7 +55,7 @@ xvec = np.linspace( -xb, xb, n, endpoint=True )
 # max(x,0)
 y_vec_0 = [ activation(x) for x in xvec ]   
 
-# G(x) and G'(x)
+# G(x) and G'(x), delta = 0.4
 delta = 0.4 
 y_vec = [ Geps(x) for x in xvec ]   
 dy_vec = [ d_Geps(x) for x in xvec ]   
@@ -99,7 +107,7 @@ ax.title.set_position([.5, 1.02])
 fig_file_name = '../fig/d_geps.eps' 
 savefig(fig_file_name)
 
-# (ln G)'
+# (ln G)' for different values delta
 xvec_pos = np.linspace( 0.01, xb, n, endpoint=True )
 delta = 0.4 
 d_logy_vec = [ d_logGeps(x) for x in xvec ]

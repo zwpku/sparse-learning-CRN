@@ -1,5 +1,11 @@
 #!/usr/bin/python
 
+"""
+  This code plots the copy-number of each component in the trajectory data as a function of
+  time.
+
+"""
+
 from pylab import *
 from numpy import *
 from os import listdir
