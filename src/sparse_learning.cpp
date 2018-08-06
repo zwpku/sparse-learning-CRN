@@ -436,6 +436,10 @@ void ista()
   ofstream out_file ;
   char buf[100] ;
 
+  // used in FISTA 
+  vector<vector<double> > vec_tmp, previous_vec ;
+  double L0, t1, eta, Lbar, t_new, t_old ;
+
   if (mpi_rank == 0)
   {
     sprintf( buf, "./output/iteration_omega_vec.txt" ) ;
@@ -450,70 +454,104 @@ void ista()
     out_file << total_unknown_omega_parameters << endl ;
   }
 
-  residual = 100.0 ;
-  iter_step = 0 ;
-
   omega_grad_vec.resize( channel_num ) ;
+  vec_tmp.resize( channel_num ) ;
+  previous_vec.resize( channel_num ) ;
   for (int i = 0; i < channel_num; i ++)
   {
+    vec_tmp[i].resize( basis_index_per_channel[i].size() ) ;
+    yk[i].resize( basis_index_per_channel[i].size() ) ;
     omega_grad_vec[i].resize( basis_index_per_channel[i].size() ) ;
   }
 
-  // update the parameters iteratively
-  while ( (residual > stop_eps) && (iter_step < tot_step) ) 
+  // initialize constants in FISTA 
+  L0 = 1.0 ;
+  t1 = 1.0 ;
+  eta = 2.0 ;
+
+  // solving the unknown coefficients for each channel
+  for (int i =0 ; i < channel_num; i ++)
   {
-    residual = 0.0 ;
-    // compute gradient of the log-likelihood functions
-    grad_log_likelihood(omega_vec, omega_grad_vec) ;
+    residual = 100.0 ;
+    iter_step = 0 ;
 
-    // update each parameter 
-    for (int i =0 ; i < channel_num; i ++)
-      for (int j = 0 ; j < omega_vec[i].size(); j ++)
-	{
-	  // gradient update 
-	  new_omega = omega_vec[i][j] - descent_dt * omega_grad_vec[i][j] ;
+    // initialize 
+    t_old = t1 ;
+    for (int j = 0 ; j < basis_index_per_channel[i].size() ; j ++)
+      yk[i][j] = omega_vec[i][j] ;
 
-	  /*
-	   * shrinking the updated parameter.
-	   *
-	   * When the second argument is zero, then no shrinkage is performed,
-	   * the algorithm reduces to the usual gradient descent 
-	   *
-	   */
-	  new_omega = shrinkage( new_omega, regular_lambda * omega_weights[i][j] * descent_dt ) ;
-
-	  // compute residual
-	  tmp = fabs( omega_vec[i][j] - new_omega ) ;
-	  if (tmp > residual) residual = tmp ;
-
-	  // update 
-	  omega_vec[i][j] = new_omega ;
-	}
-
-    iter_step ++ ;
-    if (iter_step % output_interval == 0) // print information 
+    // update the parameters iteratively
+    while ( (residual > stop_eps) && (iter_step < tot_step) ) 
     {
-      if (mpi_rank == 0)
+      residual = 0.0 ;
+      Lbar = L0 ;
+
+      // compute gradient of the log-likelihood functions
+      grad_log_likelihood_partial(i, yk, omega_grad_vec) ;
+
+      // evaluate the function at old point yk
+      fval_old = -log_likelihood_partial(i, yk) ; 
+
+      while (1) 
       {
-	printf( "\nIteration step: %d\t \tResidual=%.6e ", iter_step, residual ) ;
-	fprintf( log_file, "\nIteration step: %d\t \tResidual=%.6e ", iter_step, residual ) ;
+	// projection by shrinkage
+	p_l(i, Lbar, yk, omega_grad_vec, vec_tmp) ;
+
+	// evaluate the function at new point
+	fval_new = -log_likelihood_partial(i, vec_tmp) ; 
+
+	// compute the function Q_L(x,y) ( without the term g(x)! ) 
+	tmp = fval_old ;
+	for (int j = 0 ; j < basis_index_per_channel[i].size() ; j ++)
+	  tmp += (vec_tmp[i][j] - yk[i][j]) * omega_grad_vec[i][j] + Lbar * 0.5 * (vec_tmp[i][j] - yk[i][j]) * (vec_tmp[i][j] - yk[i][j]) ;
+
+	// check whether the condition is satisfied
+	if (fval_new <= tmp) break ;
+
+	// if not, increase the constant Lbar 
+	Lbar *= eta ;
       }
 
-      // all processors need to work together in order to compute log-likelihood
-      tmp = -log_likelihood(omega_vec) ; 
-      tmp1 = l1_norm(omega_vec, omega_weights) ;
+      // update t_{k+1}
+      t_new = (1 + sqrt(1 + 4 * t_old * t_old)) * 0.5 ;
 
-      if (mpi_rank == 0)
+      // update the vector yk 
+      for (int j = 0 ; j < basis_index_per_channel[i].size() ; j ++)
+	yk[i][j] = vec_tmp[i][j] + (t_old - 1) / t_new * ( vec_tmp[i][j] - omega_vec[i][j] ) ;
+
+      for (int j = 0 ; j < basis_index_per_channel[i].size() ; j ++)
       {
-	printf( "\nminus-likelihood = %.8f\t l1-norm : %.4f\t Cost = %.8f\n", tmp, tmp1, tmp + regular_lambda * tmp1 ) ;
-	fprintf( log_file, "\nminus-likelihood = %.8f\t l1-norm : %.4f\t Cost = %.8f\n", tmp, tmp1, tmp + regular_lambda * tmp1 ) ;
-	print_grad(omega_vec) ;
+	// compute residual
+	tmp = fabs( omega_vec[i][j] - vec_tmp[i][j] ) ;
+	if (tmp > residual) residual = tmp ;
+	  // update xk
+	omega_vec[i][j] = vec_tmp[i][j] ;
+      }
 
-	out_file << iter_step << ' ' ;
-	for (int i =0 ; i < channel_num; i ++)
+      iter_step ++ ;
+      if (iter_step % output_interval == 0) // print information 
+      {
+	if (mpi_rank == 0)
+	{
+	  printf( "\nChannel idx=%d\tIteration step: %d\t \tResidual=%.6e ", i, iter_step, residual ) ;
+	  fprintf( log_file, "\nChannel idx=%d\tIteration step: %d\t \tResidual=%.6e ", i, iter_step, residual ) ;
+	}
+
+	// all processors need to work together in order to compute log-likelihood
+	tmp = -log_likelihood_partial(i, omega_vec) ; 
+	tmp1 = l1_norm_partial(i,omega_vec, omega_weights) ;
+
+	if (mpi_rank == 0)
+	{
+	  printf( "\nminus-likelihood = %.8f\t l1-norm : %.4f\t Cost = %.8f\n", tmp, tmp1, tmp + regular_lambda * tmp1 ) ;
+	  fprintf( log_file, "\nminus-likelihood = %.8f\t l1-norm : %.4f\t Cost = %.8f\n", tmp, tmp1, tmp + regular_lambda * tmp1 ) ;
+	  print_grad_partial(i, omega_vec) ;
+
+	  out_file << "Channel idx=" << i << "\tIter_step=" << iter_step << endl ;
 	  for (int j = 0 ; j < omega_vec[i].size(); j ++)
 	    out_file << omega_vec[i][j] << ' ' ;
-	out_file << residual << endl ;
+	  out_file << residual << endl ;
+	}
       }
     }
   }

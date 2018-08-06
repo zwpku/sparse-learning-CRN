@@ -87,14 +87,31 @@ double d_logG(double x)
   }
 }
 
-/* 
- * compute the weighted l^1 norm of vector 
+/*
+ * check whether x equals zero
  */
-double l1_norm( vector<vector<double> > & coeff_vec, vector<vector<double> > & weights )
+int is_zero(double x)
+{
+  if (fabs(x) < 1e-15) return 1 ;
+  else return 0 ;
+}
+
+/* 
+ * Compute the weighted l^1 norm of vector (corresponding to certain reaction
+ * channel
+ *
+ * input :
+ *   i : 		index of the channel
+ *   coeff_vec :	coefficient vector
+ *   weights :		the weights for each component
+ *
+ * return :
+ *   s :		the wegithed l^1 norm
+ */
+double l1_norm_partial( int i, vector<vector<double> > & coeff_vec, vector<vector<double> > & weights )
 {
   double s;
   s = 0.0 ;
-  for (int i =0 ; i < channel_num; i ++)
     for (int j = 0 ; j < coeff_vec[i].size() ; j ++)
     {
       s += fabs(coeff_vec[i][j]) * weights[i][j] ;
@@ -347,7 +364,8 @@ void dump_info(int idx, double tmp_ai, vector<int> & c_state, vector<vector<doub
 
 /* 
  *
- * Compute log-likelihood function
+ * Compute (partial) log-likelihood function corresponding to certain reaction
+ * channel
  *
  * If reaction types are known (know_reactions_flag=1), then function G(x)=x;
  * Otherwise, G(x) is a smooth function approximating \max(x,0).
@@ -357,16 +375,18 @@ void dump_info(int idx, double tmp_ai, vector<int> & c_state, vector<vector<doub
  * The final result is obtained by calling MPI_Allreduce. 
  *
  * input:
+ *
+ *   i0 :		index of the reaction channel
  *   coeff_vec :	vector of coefficients  
  *
  * output:
- *   logarithmic of the likelihood function (divided by the total length
+ *   (partial) logarithmic of the likelihood function (divided by the total length
  *   of time)
  *
  */
-double log_likelihood(vector<vector<double> > & coeff_vec)
+double log_likelihood_partial( int i0, vector<vector<double> > & coeff_vec )
 {
-  double s, tmp_ai, s1, ai, local_s ;
+  double s, tmp_ai, ai, local_s ;
   int idx ;
 
   local_s = 0 ;
@@ -376,14 +396,20 @@ double log_likelihood(vector<vector<double> > & coeff_vec)
   {
     // subtract by 1, because index starts from one   
     idx = channel_idx_in_traj[traj_idx][i] - 1 ;
+
+    // only when the jump is in channel i0 
+    if (idx != i0) continue ;
+
     tmp_ai = val_ai(idx, traj_vec[traj_idx][i], coeff_vec) ;
 
     // since the channel occurs in trajectory, the propensity ai should be
     // positive
-    if (tmp_ai == 0)
+    if ( is_zero(tmp_ai) )
     {
       printf( "Error: ai=0! i=%d, idx=%d", i, idx ) ;
-      fprintf( log_file, "Error: ai=0! i=%d, idx=%d", i, idx ) ;
+
+      if (mpi_rank == 0)
+	fprintf( log_file, "Error: ai=0! i=%d, idx=%d", i, idx ) ;
 
       dump_info(idx, tmp_ai, traj_vec[traj_idx][i], coeff_vec ) ;
       exit(1) ;
@@ -398,14 +424,10 @@ double log_likelihood(vector<vector<double> > & coeff_vec)
   // loop for each state, including the last one
     for (int i = 0; i < num_state_in_traj[traj_idx]; i ++)
     {
-      s1 = 0.0 ;
-      for (int j = 0 ; j < channel_num; j ++)
-      {
-	tmp_ai = val_ai( j, traj_vec[traj_idx][i], coeff_vec ) ;
-	s1 += G(tmp_ai) ;
-      }
+      tmp_ai = val_ai( i0, traj_vec[traj_idx][i], coeff_vec ) ;
+
     // compute the second part of the log-likelihood function
-      local_s -= waiting_time_vec[traj_idx][i] * s1 ;
+      local_s -= waiting_time_vec[traj_idx][i] * G(tmp_ai) ;
     }
 
   // sum up all processors
@@ -416,26 +438,27 @@ double log_likelihood(vector<vector<double> > & coeff_vec)
 
 /* 
  *
- * Compute gradient of the log-likelihood function.
+ * Compute gradient of the (partial) log-likelihood function corresponding a
+ * certain reaction channel.
  *
  * Again, this function requires all processors to work together. 
  *
  * input:
+ *   i0 	: 	index of the reaction channel
  *   coeff_vec  :	vector of coefficients  
  *
- * at return:
- *   grad_coeff :	contains the gradient of the log-likelihood function (divided by the total length
+ * return:
+ *   grad_coeff :	contains the gradient of the (partial) log-likelihood function (divided by the total length
  *   			of time)
  *
  */
 
-void grad_log_likelihood(vector<vector<double> > & coeff_vec, vector<vector<double> > & grad_coeff)
+void grad_log_likelihood_partial( int i0, vector<vector<double> > & coeff_vec, vector<vector<double> > & grad_coeff )
 {
   double s, tmp_ai, s1, tmp , local_s ;
   int idx , basis_idx ;
 
-  // compute each component, indexed by i0 (channel) and j0 (basis function)
-  for (int i0 = 0 ; i0 < channel_num ; i0 ++)
+  // compute each component of the gradient in the reaction channel i0
     for (int j0 = 0 ; j0 < coeff_vec[i0].size() ; j0 ++)
     {
       // index of basis function
@@ -487,20 +510,17 @@ double shrinkage(double x, double lambda)
   return 0.0;
 }
 
-void print_grad( vector<vector<double> > & coeff_vec )
+void print_grad_partial( int i, vector<vector<double> > & coeff_vec )
 {
-  for (int i =0 ; i < channel_num; i ++)
+  printf("Channel %d (", i) ;
+  for (int j = 0 ; j < channel_list[i].size() ; j ++)
+    cout << channel_list[i][j] << ' ';
+  cout << ") :\t";
+  for (int j = 0 ; j < coeff_vec[i].size() ; j ++)
   {
-    printf("Channel %d (", i) ;
-    for (int j = 0 ; j < channel_list[i].size() ; j ++)
-      cout << channel_list[i][j] << ' ';
-    cout << ") :\t";
-    for (int j = 0 ; j < coeff_vec[i].size() ; j ++)
-    {
-      cout << coeff_vec[i][j] << '\t' ;
-    }
-    cout << endl ;
+    cout << coeff_vec[i][j] << '\t' ;
   }
+  cout << endl ;
 }
 
 /* 
@@ -527,5 +547,57 @@ int dir_check( char dir_name[] )
       else return -1 ;
     }
   return 0 ;
+}
+
+void p_l(int i, double L, vector<vector<double> > & yk, vector<vector<double> > & grad_f, vector<vector<double> > & vec_tmp) 
+{
+  double w , tmp, d1, d2, x, tol, residual ;
+
+  for (int j = 0 ; j <  basis_index_per_channel[i].size() ; j ++)
+  {
+    w = regular_lambda * weights[i][j] ; 
+    tmp = yk[i][j] - y grad_f[i][j] / L ;
+
+    if ( is_zero(w) ) // if the weight is zero 
+    {
+      vec_tmp[i][j] = tmp ;
+      continue ;
+    }
+
+    if (epsL1_flag == 0) // weighted l^1 norm
+      vec_tmp[i][j] = shrinkage( tmp, w / L ) ;
+    else  
+    {  
+      /* epsL1 : g(x) is w\times sqrt(x^2+\eps)
+       *
+       * Use newton method to solve: g(x) + 1/(2L) |x-(y-grad_f/L)|^2
+       *
+       * 1st derivative : wx/sqrt(x^2+\eps) + (x-(y-grad_f/L)/L
+       * 2st derivative : 1/L + w\eps (x^2+\eps)^{-3/2}
+       *
+       * Starting from x0 = y-grad_f/L
+       */
+
+      x = tmp ;
+      tol = 1e-10 ;
+      residual = 1.0 ;
+      while (residual > tol) 
+      {
+	d1 = w * x / sqrt(x*x+eps) + (x - tmp) / L ;
+	d2 = 1.0 / L + w * eps / pow(x*x+eps, 1.5) ;
+	// newton's method 
+	x = x - d1 / d2 ;
+	residual = fabs(d1 / d2) ;
+      }
+
+      if ((residual > tol) && (mpi_rank == 0))
+      {
+	 printf( "Warning: Newton's method doesn't converge!\n Residual=%.4e, Tolerance=%.4e\n", residual, tol) ;
+	 fprintf( log_file, "Warning: Newton's method doesn't converge!\n Residual=%.4e, Tolerance=%.4e\n", residual, tol) ;
+      }
+
+      vec_tmp[i][j] = x ;
+    }
+  }
 }
 

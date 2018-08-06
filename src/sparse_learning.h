@@ -131,11 +131,12 @@ double ssa(double & t_now, vector<int> & c_state, vector<int> & next_state) ;
 
 double val_basis_funct(int basis_idx, vector<int> &state) ;
 double shrinkage(double x, double lambda) ;
-void grad_log_likelihood(vector<vector<double> > & coeff_vec, vector<vector<double> > & grad_coeff) ;
-double log_likelihood(vector<vector<double> > & coeff_vec) ;
+void grad_log_likelihood_partial(vector<vector<double> > & coeff_vec, vector<vector<double> > & grad_coeff) ;
+double log_likelihood_partial(vector<vector<double> > & coeff_vec) ;
 double val_ai(int channel_idx, vector<int> &state, vector<vector<double> > & coeff_vec ) ;
 double val_basis_funct(int basis_idx, vector<int> &state) ;
-void print_grad( vector<vector<double> > & coeff_vec ) ;
+void print_grad_partial( int i, vector<vector<double> > & coeff_vec ) ;
 double l1_norm( vector<vector<double> > & coeff_vec, vector<vector<double> > & weights ) ;
 double epsL1_norm( vector<vector<double> > & coeff_vec, vector<vector<double> > & weights ) ;
+void p_l(int i, double L, vector<vector<double> > & yk, vector<vector<double> > & grad_f, vector<vector<double> > & vec_tmp) ;
 
