@@ -412,24 +412,17 @@ void output_omega()
 }
 
 /*
+ * Fast Iterative Shrinkage-Thresholding Algorithm (with backtracking) for solving the unknown parameters
  *
- * Scheme 1: iterative shrinkage-thresholding algorithm for solving the unknown parameters
+ * This function implements the FISTA method introduced in the paper:
  *
- * This iterative algorithm will be used if 
- * 	iter_scheme=0
- *
- * At each iteration step, the algorithm performs two updates:
- *
- *   1. update the values of parameters according to gradient descent
- *
- *   2. thresholding the updated parameters using the function
- * 		double shrinkage(double x, double lambda)
- *      in the file utils.cpp
+ *  	A. Beck and M. Teboulle, "A fast iterative shrinkage-thresholding algorithm for 
+ *   linear inverse problems",  SIAM Journal on Imaging Sciences, vol. 2, no. 1, pp. 183–202, 2009. 
  *
  */
-void ista()
+void FISTA_backtracking()
 {
-  double residual, tmp, tmp1 ;
+  double residual, tmp ;
   double new_omega ;
   int iter_step ; 
   vector<vector<double> > omega_grad_vec ;
@@ -437,8 +430,9 @@ void ista()
   char buf[100] ;
 
   // used in FISTA 
-  vector<vector<double> > vec_tmp, previous_vec ;
+  vector<vector<double> > vec_tmp, yk ;
   double L0, t1, eta, Lbar, t_new, t_old ;
+  double fval_old, fval_new ;
 
   if (mpi_rank == 0)
   {
@@ -456,7 +450,7 @@ void ista()
 
   omega_grad_vec.resize( channel_num ) ;
   vec_tmp.resize( channel_num ) ;
-  previous_vec.resize( channel_num ) ;
+  yk.resize( channel_num ) ;
   for (int i = 0; i < channel_num; i ++)
   {
     vec_tmp[i].resize( basis_index_per_channel[i].size() ) ;
@@ -464,16 +458,29 @@ void ista()
     omega_grad_vec[i].resize( basis_index_per_channel[i].size() ) ;
   }
 
-  // initialize constants in FISTA 
+  // initialize constants in FISTA
   L0 = 1.0 ;
   t1 = 1.0 ;
   eta = 2.0 ;
 
-  // solving the unknown coefficients for each channel
+  /* 
+   *
+   * The log-likelihood function ln L(w) can be written as 
+   * 	ln L(w) = \sum_{i=1}^K ln L_i(w_i), 
+   * i.e., unknown parameters belonging to different reaction channels are decoupled.
+   *
+   * Therefore, we solve the unknown coefficients for one channel after another.
+   */
   for (int i =0 ; i < channel_num; i ++)
   {
     residual = 100.0 ;
     iter_step = 0 ;
+
+    if (mpi_rank == 0)
+    {
+      printf("Solving coefficients for the reaction channel %d...\n", i) ;
+      fprintf(log_file, "Solving coefficients for the reaction channel %d...\n", i) ;
+    }
 
     // initialize 
     t_old = t1 ;
@@ -486,19 +493,24 @@ void ista()
       residual = 0.0 ;
       Lbar = L0 ;
 
-      // compute gradient of the log-likelihood functions
-      grad_log_likelihood_partial(i, yk, omega_grad_vec) ;
+      // compute the gradient of the log-likelihood functions
+      grad_minus_log_likelihood_partial(i, yk, omega_grad_vec) ;
 
       // evaluate the function at old point yk
-      fval_old = -log_likelihood_partial(i, yk) ; 
+      fval_old = minus_log_likelihood_partial(i, yk) ; 
 
+      /* compute Lbar
+       *
+       * After iteration, vec_tmp contains the updated state p_L(yk)
+       *
+       */
       while (1) 
       {
 	// projection by shrinkage
-	p_l(i, Lbar, yk, omega_grad_vec, vec_tmp) ;
+	p_L(i, Lbar, yk, omega_grad_vec, vec_tmp) ;
 
 	// evaluate the function at new point
-	fval_new = -log_likelihood_partial(i, vec_tmp) ; 
+	fval_new = minus_log_likelihood_partial(i, vec_tmp) ; 
 
 	// compute the function Q_L(x,y) ( without the term g(x)! ) 
 	tmp = fval_old ;
@@ -524,9 +536,12 @@ void ista()
 	// compute residual
 	tmp = fabs( omega_vec[i][j] - vec_tmp[i][j] ) ;
 	if (tmp > residual) residual = tmp ;
-	  // update xk
+	  // update x_k
 	omega_vec[i][j] = vec_tmp[i][j] ;
       }
+
+      // update t_k
+      t_old = t_new ;
 
       iter_step ++ ;
       if (iter_step % output_interval == 0) // print information 
@@ -537,94 +552,45 @@ void ista()
 	  fprintf( log_file, "\nChannel idx=%d\tIteration step: %d\t \tResidual=%.6e ", i, iter_step, residual ) ;
 	}
 
-	// all processors need to work together in order to compute log-likelihood
-	tmp = -log_likelihood_partial(i, omega_vec) ; 
-	tmp1 = l1_norm_partial(i,omega_vec, omega_weights) ;
+	tmp = penalty_g_partial(i,omega_vec, omega_weights) ;
 
 	if (mpi_rank == 0)
 	{
-	  printf( "\nminus-likelihood = %.8f\t l1-norm : %.4f\t Cost = %.8f\n", tmp, tmp1, tmp + regular_lambda * tmp1 ) ;
-	  fprintf( log_file, "\nminus-likelihood = %.8f\t l1-norm : %.4f\t Cost = %.8f\n", tmp, tmp1, tmp + regular_lambda * tmp1 ) ;
+	  printf( "\nminus-likelihood = %.8f\t penalty g_i(x) : %.4f\t Cost = %.8f\n", fval_new, tmp, fval_new + tmp ) ;
+	  fprintf( log_file, "\nminus-likelihood = %.8f\t penalty g_i(x): %.4f\t Cost = %.8f\n", fval_new, tmp, fval_new + tmp ) ;
 	  print_grad_partial(i, omega_vec) ;
 
 	  out_file << "Channel idx=" << i << "\tIter_step=" << iter_step << endl ;
+
 	  for (int j = 0 ; j < omega_vec[i].size(); j ++)
 	    out_file << omega_vec[i][j] << ' ' ;
+
 	  out_file << residual << endl ;
 	}
       }
     }
+
+    if (mpi_rank == 0)
+    {
+      printf("Solving coefficients for the reaction channel %d... finished. Total iteration steps=%d\n\n", i, iter_step) ;
+      fprintf(log_file, "Solving coefficients for the reaction channel %d... finished. Total iteration steps=%d\n\n", i, iter_step) ;
+    }
+  }
+
+  tmp = 0 ;
+  for (int i = 0 ; i < channel_num ; i ++)
+  {
+    tmp += minus_log_likelihood_partial( i, omega_vec ) ;
+    tmp += penalty_g_partial( i, omega_vec, omega_weights ) ;
   }
 
   if (mpi_rank == 0) 
   {
+    printf( "Final cost = %.6f\n", tmp ) ;
+    fprintf( log_file, "Final cost = %.6f\n", tmp ) ;
+
     output_omega() ;
     out_file.close() ;
-  }
-}
-
-/* 
- * Scheme 2: iterative algorithm for solving the unknown parameters
- *
- * This iterative algorithm will be used if 
- * 	iter_scheme=1
- *
- * Different from Scheme 1, here the l^1 penalty is replaced by \sum_i w_i \times sqrt(|x_i|^2 + \eps)
- *
- * A simple gradient descent method is applied to minimize the smoothed optimization problem
- *
- */
-
-void epsL1()
-{
-  double residual , tmp , new_omega, tmp1 ;
-  int iter_step ; 
-  vector<vector<double> > omega_grad_vec ;
-
-  residual = 100.0 ;
-  iter_step = 0 ;
-
-  omega_grad_vec.resize( channel_num ) ;
-  for (int i = 0; i < channel_num; i ++)
-  {
-    omega_grad_vec[i].resize( basis_index_per_channel[i].size() ) ;
-  }
-
-  while ( (residual > stop_eps) && (iter_step < tot_step) ) 
-  {
-    residual = 0.0 ;
-    grad_log_likelihood(omega_vec, omega_grad_vec) ;
-
-    for (int i =0 ; i < channel_num; i ++)
-      for (int j = 0 ; j < omega_vec[i].size() ; j ++)
-      {
-	// gradient of the smoothed (l^1) penalty
-	tmp = omega_weights[i][j] * omega_vec[i][j] / sqrt(omega_vec[i][j] * omega_vec[i][j] + eps) ;
-	// gradient update 
-	new_omega = omega_vec[i][j] - descent_dt * (omega_grad_vec[i][j] + regular_lambda * tmp) ;
-
-	tmp = fabs( omega_vec[i][j] - new_omega ) ;
-	if (tmp > residual) residual = tmp ;
-	omega_vec[i][j] = new_omega ;
-      }
-
-    iter_step ++ ;
-    if (iter_step % output_interval == 0) 
-    {
-      if (mpi_rank == 0)
-      {
-	printf( "\nIteration step: %d,\t \tResidual=%.6e ", iter_step, residual ) ;
-	fprintf( log_file, "\nIteration step: %d,\t \tResidual=%.6e ", iter_step, residual ) ;
-      }
-      tmp = -log_likelihood(omega_vec) ;
-      tmp1 = epsL1_norm(omega_vec, omega_weights) ;
-      if (mpi_rank == 0)
-      {
-	printf( "\nminus-likelihood = %.8f\t epsL1-norm : %.4f\t Cost = %.8f\n", tmp, tmp1, tmp + regular_lambda * tmp1 ) ;
-	fprintf( log_file, "\nminus-likelihood = %.8f\t epsL1-norm : %.4f\t Cost = %.8f\n", tmp, tmp1, tmp + regular_lambda * tmp1 ) ;
-	print_grad(omega_vec) ;
-      }
-    }
   }
 }
 
@@ -642,7 +608,6 @@ void epsL1()
  * The results can used to compare with those obtained from iterative methods.
  *
  */
-
 void direct_compute_channel_with_single_reaction() 
 {
   int idx;
@@ -685,15 +650,8 @@ int main ( int argc, char * argv[] )
 
   read_basis_functions() ;
 
-  // solve the parameters using different schemes
-  switch (iter_scheme) {
-  case 0 :  // iterative shrinkage-thresholding algorithm
-    ista() ;
-    break ;
-  case 1 :  // epsL1
-    epsL1() ;
-    break ;
-  }
+  // solve the parameters using the Fast Iterative Shrinkage-Thresholding Algorithm (FISTA)
+  FISTA_backtracking() ;
 
   // when reaction types are known and a channel has only one reaction, then
   // the parameter can be computed directly

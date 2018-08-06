@@ -43,8 +43,11 @@ extern vector<int> num_state_in_traj ;
 // total number of reactions in all N_traj trajectories
 extern int tot_num_reaction_in_traj ;
 
-// numerical scheme used to solve the (sparse) optimization problem
-extern int iter_scheme ;
+/* 
+ * epsL1_flag = 0, use l^1 norm
+ * epsL1_flag = 1, use (x*x+eps)^{1/2} 
+ */
+extern int epsL1_flag ;
 
 // T :   length of trajectories when they are simulated using SSA method
 extern double T ;
@@ -130,13 +133,10 @@ int init(char * log_file_name) ;
 double ssa(double & t_now, vector<int> & c_state, vector<int> & next_state) ;
 
 double val_basis_funct(int basis_idx, vector<int> &state) ;
-double shrinkage(double x, double lambda) ;
-void grad_log_likelihood_partial(vector<vector<double> > & coeff_vec, vector<vector<double> > & grad_coeff) ;
-double log_likelihood_partial(vector<vector<double> > & coeff_vec) ;
-double val_ai(int channel_idx, vector<int> &state, vector<vector<double> > & coeff_vec ) ;
+void grad_minus_log_likelihood_partial(int i, vector<vector<double> > & coeff_vec, vector<vector<double> > & grad_coeff) ;
+double minus_log_likelihood_partial(int i, vector<vector<double> > & coeff_vec) ;
 double val_basis_funct(int basis_idx, vector<int> &state) ;
 void print_grad_partial( int i, vector<vector<double> > & coeff_vec ) ;
-double l1_norm( vector<vector<double> > & coeff_vec, vector<vector<double> > & weights ) ;
-double epsL1_norm( vector<vector<double> > & coeff_vec, vector<vector<double> > & weights ) ;
-void p_l(int i, double L, vector<vector<double> > & yk, vector<vector<double> > & grad_f, vector<vector<double> > & vec_tmp) ;
+void p_L(int i, double L, vector<vector<double> > & yk, vector<vector<double> > & grad_f, vector<vector<double> > & vec_tmp) ;
+double penalty_g_partial(int i, vector<vector<double> > & omega_vec, vector<vector<double> > & omega_weights) ;
 

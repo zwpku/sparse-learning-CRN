@@ -113,25 +113,19 @@ double l1_norm_partial( int i, vector<vector<double> > & coeff_vec, vector<vecto
   double s;
   s = 0.0 ;
     for (int j = 0 ; j < coeff_vec[i].size() ; j ++)
-    {
       s += fabs(coeff_vec[i][j]) * weights[i][j] ;
-    }
   return s ;
 }
 
 /* 
- * approximation of the weighted l^1 norm, where
- * the absolute value |x| is approximated by (|x|^2+\epsilon)^{1/2}
+ * Compute \sum_j w_j (|x_j|^2+\epsilon)^{1/2} for the reaction channel i.
  */
-double epsL1_norm( vector<vector<double> > & coeff_vec, vector<vector<double> > & weights )
+double epsL1_norm_partial(int i, vector<vector<double> > & coeff_vec, vector<vector<double> > & weights )
 {
   double s ;
   s = 0.0 ;
-  for (int i =0 ; i < channel_num ; i ++)
-    for (int j = 0 ; j < coeff_vec[i].size() ; j ++)
-    {
-      s += sqrt( coeff_vec[i][j] * coeff_vec[i][j] + eps ) * weights[i][j] ;
-    }
+  for (int j = 0 ; j < coeff_vec[i].size() ; j ++)
+    s += sqrt( coeff_vec[i][j] * coeff_vec[i][j] + eps ) * weights[i][j] ;
   return s ;
 }
 
@@ -364,8 +358,15 @@ void dump_info(int idx, double tmp_ai, vector<int> & c_state, vector<vector<doub
 
 /* 
  *
- * Compute (partial) log-likelihood function corresponding to certain reaction
+ * Compute (partial) minus of the log-likelihood function corresponding to certain reaction
  * channel
+ *
+ * The minus log-likelihood function can be written as 
+ *
+ *   -\ln L(w) = -\sum_{i=1}^K \ln L_i(w_i),
+ *
+ * where i is the index of channel, w is the unknown coefficients. 
+ * This function computes -\ln L_i(w_i). 
  *
  * If reaction types are known (know_reactions_flag=1), then function G(x)=x;
  * Otherwise, G(x) is a smooth function approximating \max(x,0).
@@ -380,11 +381,11 @@ void dump_info(int idx, double tmp_ai, vector<int> & c_state, vector<vector<doub
  *   coeff_vec :	vector of coefficients  
  *
  * output:
- *   (partial) logarithmic of the likelihood function (divided by the total length
+ *   (partial) minus of logarithmic of the likelihood function (divided by the total length
  *   of time)
  *
  */
-double log_likelihood_partial( int i0, vector<vector<double> > & coeff_vec )
+double minus_log_likelihood_partial( int i0, vector<vector<double> > & coeff_vec )
 {
   double s, tmp_ai, ai, local_s ;
   int idx ;
@@ -416,7 +417,7 @@ double log_likelihood_partial( int i0, vector<vector<double> > & coeff_vec )
     }
 
     // compute the first part of the log-likelihood function
-    local_s += logG(tmp_ai) ;
+    local_s += -logG(tmp_ai) ;
   }
 
   // process trajectories that are distributed on the local processor
@@ -427,7 +428,7 @@ double log_likelihood_partial( int i0, vector<vector<double> > & coeff_vec )
       tmp_ai = val_ai( i0, traj_vec[traj_idx][i], coeff_vec ) ;
 
     // compute the second part of the log-likelihood function
-      local_s -= waiting_time_vec[traj_idx][i] * G(tmp_ai) ;
+      local_s += waiting_time_vec[traj_idx][i] * G(tmp_ai) ;
     }
 
   // sum up all processors
@@ -438,7 +439,7 @@ double log_likelihood_partial( int i0, vector<vector<double> > & coeff_vec )
 
 /* 
  *
- * Compute gradient of the (partial) log-likelihood function corresponding a
+ * Compute gradient of the (partial) minus log-likelihood function corresponding a
  * certain reaction channel.
  *
  * Again, this function requires all processors to work together. 
@@ -448,12 +449,11 @@ double log_likelihood_partial( int i0, vector<vector<double> > & coeff_vec )
  *   coeff_vec  :	vector of coefficients  
  *
  * return:
- *   grad_coeff :	contains the gradient of the (partial) log-likelihood function (divided by the total length
- *   			of time)
- *
+ *   grad_coeff :	contains the gradient of the (partial) minus log-likelihood function (divided by the 
+ *   			total length of time)
  */
 
-void grad_log_likelihood_partial( int i0, vector<vector<double> > & coeff_vec, vector<vector<double> > & grad_coeff )
+void grad_minus_log_likelihood_partial( int i0, vector<vector<double> > & coeff_vec, vector<vector<double> > & grad_coeff )
 {
   double s, tmp_ai, s1, tmp , local_s ;
   int idx , basis_idx ;
@@ -549,55 +549,97 @@ int dir_check( char dir_name[] )
   return 0 ;
 }
 
-void p_l(int i, double L, vector<vector<double> > & yk, vector<vector<double> > & grad_f, vector<vector<double> > & vec_tmp) 
+/*
+ * the projection map p_L(yk)
+ *
+ * Here we assume the (penalty) function g(x) = \sum_j g_j(x_j). 
+ * In thie case, the components of the minimizer can be computed 
+ * separately, by solving several one-dimensional optimization problems.
+ *
+ * Two types of g_j(x) are considered.
+ * 1. l^1 norm: g_j(x_j) = w_j |x_j|
+ *   In this case, the minimizer can be solved analytically using the
+ *   shrinkage function
+ *
+ * 2. g_j(x_j) = w_j sqrt(x_j^2+eps)
+ *   In this case, we solve the minimizer using Newton's method, which should
+ *   converge quickly.
+ *
+ * input: 	
+ *   i : 	index of reaction channel
+ *   y :	the reference vector 
+ *   grad_f : 	the gradient of the function f (=\nabla f(y))
+ *
+ * output: 
+ *   vec_tmp    the result (minimizer)
+ */
+void p_L(int i, double L, vector<vector<double> > & y, vector<vector<double> > & grad_f, vector<vector<double> > & vec_tmp) 
 {
-  double w , tmp, d1, d2, x, tol, residual ;
+  double wj , tmp ;
 
   for (int j = 0 ; j <  basis_index_per_channel[i].size() ; j ++)
   {
-    w = regular_lambda * weights[i][j] ; 
-    tmp = yk[i][j] - y grad_f[i][j] / L ;
+    // the weight constant 
+    wj = regular_lambda * omega_weights[i][j] ; 
 
-    if ( is_zero(w) ) // if the weight is zero 
+    // y - 1/L * \nabla f(y)
+    tmp = y[i][j] - grad_f[i][j] / L ;
+
+    if ( is_zero(wj) ) // if the weight is zero 
     {
       vec_tmp[i][j] = tmp ;
       continue ;
     }
 
     if (epsL1_flag == 0) // weighted l^1 norm
-      vec_tmp[i][j] = shrinkage( tmp, w / L ) ;
+      vec_tmp[i][j] = shrinkage( tmp, wj / L ) ;
     else  
     {  
-      /* epsL1 : g(x) is w\times sqrt(x^2+\eps)
+      /* 
+       * epsL1 : g_j(x_j) = w_j sqrt(x_j^2+\eps)
        *
-       * Use newton method to solve: g(x) + 1/(2L) |x-(y-grad_f/L)|^2
+       * Use Newton's method to solve: g_j(x_j) + L/2 |x_j-(y-grad_f/L)|^2
        *
-       * 1st derivative : wx/sqrt(x^2+\eps) + (x-(y-grad_f/L)/L
-       * 2st derivative : 1/L + w\eps (x^2+\eps)^{-3/2}
+       * 1st derivative = w_j x_j/sqrt(x_j^2+\eps) + L(x_j-(y-grad_f/L))
+       * 2st derivative = L + w_j\eps (x_j^2+\eps)^{-3/2}
        *
-       * Starting from x0 = y-grad_f/L
        */
 
-      x = tmp ;
+      double d1, d2, xj, tol, residual ;
+      int l, mstep ;
+
+      // Starting from x0 = y-grad_f/L
+      xj = tmp ;
+
       tol = 1e-10 ;
       residual = 1.0 ;
-      while (residual > tol) 
+      mstep = 100 ;
+      l = 0 ;
+      while ( (residual > tol) && (l < mstep) )
       {
-	d1 = w * x / sqrt(x*x+eps) + (x - tmp) / L ;
-	d2 = 1.0 / L + w * eps / pow(x*x+eps, 1.5) ;
+	d1 = wj * xj / sqrt(xj*xj+eps) + L * (xj - tmp) ;
+	d2 = L + wj * eps / pow(xj*xj+eps, 1.5) ;
 	// newton's method 
-	x = x - d1 / d2 ;
+	xj = xj - d1 / d2 ;
 	residual = fabs(d1 / d2) ;
+	l ++ ;
       }
 
-      if ((residual > tol) && (mpi_rank == 0))
+      if ( (residual > tol) && (mpi_rank == 0) )
       {
-	 printf( "Warning: Newton's method doesn't converge!\n Residual=%.4e, Tolerance=%.4e\n", residual, tol) ;
-	 fprintf( log_file, "Warning: Newton's method doesn't converge!\n Residual=%.4e, Tolerance=%.4e\n", residual, tol) ;
+	 printf( "Warning: Newton's method doesn't converge after %d steps!\n Residual=%.4e, Tolerance=%.4e\n", mstep, residual, tol) ;
+	 fprintf( log_file, "Warning: Newton's method doesn't converge after %d steps!\n Residual=%.4e, Tolerance=%.4e\n", mstep, residual, tol) ;
       }
 
-      vec_tmp[i][j] = x ;
+      vec_tmp[i][j] = xj ;
     }
   }
 }
 
+double penalty_g_partial(int i, vector<vector<double> > & omega_vec, vector<vector<double> > & weights) 
+{
+  if (epsL1_flag == 0) // weighted l^1 norm
+    return regular_lambda * l1_norm_partial(i, omega_vec, weights) ;
+  else 
+    return regular_lambda * epsL1_norm_partial(i, omega_vec, weights) ;
+}

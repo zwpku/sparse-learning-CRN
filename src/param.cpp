@@ -22,7 +22,7 @@ vector<int> init_state , reactant_num , Mi_in_all_traj ;
 vector<vector<int> > vvec_in, vvec_out, vvec, v_neg_idx_vec ;
 vector<double> kappa_vec ;
 
-int poly_order, num_basis, iter_scheme ;
+int poly_order, num_basis, epsL1_flag ;
 
 vector<vector<int> > basis_vec, basis_index_per_channel ;
 
