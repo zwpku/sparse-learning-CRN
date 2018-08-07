@@ -512,7 +512,7 @@ double shrinkage(double x, double lambda)
 
 void print_grad_partial( int i, vector<vector<double> > & coeff_vec )
 {
-  printf("Channel %d (", i) ;
+  printf("\tChannel %d (", i) ;
   for (int j = 0 ; j < channel_list[i].size() ; j ++)
     cout << channel_list[i][j] << ' ';
   cout << ") :\t";

@@ -71,9 +71,6 @@ int read_config()
   if ( read_value(cfg, string("stop_eps"), stop_eps) < 0 )
     return -1;
 
-  if ( read_value(cfg, string("descent_dt"), descent_dt) < 0 )
-    return -1;
-
   if ( read_value(cfg, string("tot_step"), tot_step) < 0 )
     return -1;
 

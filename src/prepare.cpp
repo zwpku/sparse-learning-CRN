@@ -130,8 +130,8 @@ void output_channel_info()
   char buf[100] ;
   sprintf( buf, "./output/channel_info.txt") ;
 
-  printf("\nInformation of channels are stored to file: %s\n", buf) ;
-  fprintf(log_file, "\nInformation of channels are stored to file: %s\n", buf) ;
+  printf("\nInformation of channels are stored into file: %s\n\n", buf) ;
+  fprintf(log_file, "\nInformation of channels are stored into file: %s\n\n", buf) ;
 
   out_file.open(buf) ;
 
@@ -193,8 +193,8 @@ void process_data()
   waiting_time_vec.resize(N_traj) ;
   t_vec.resize(N_traj) ;
 
-  printf("No. of trajectories = %d\n\n", N_traj) ;
-  fprintf(log_file , "No. of trajectories = %d\n\n", N_traj) ;
+  printf("Number of trajectories = %d\n\n", N_traj) ;
+  fprintf(log_file , "Number of trajectories = %d\n\n", N_traj) ;
 
   tot_num_reaction_in_traj = 0 ;
 
@@ -245,31 +245,29 @@ void process_data()
   // determine channels from trajectory data
   find_channels_in_traj(traj_vec) ;
 
-  printf("\n%d reactions in total,\t%d reaction channels\n\n", tot_num_reaction_in_traj, channel_num) ;
-  fprintf(log_file, "\n%d reactions in total,\t%d reaction channels\n\n", tot_num_reaction_in_traj, channel_num) ;
+  printf("\nIn total:\n   %d reactions,\t%d reaction channels\n\n", tot_num_reaction_in_traj, channel_num) ;
+  fprintf(log_file, "\nIn total:\n   %d reactions,\t%d reaction channels\n\n", tot_num_reaction_in_traj, channel_num) ;
 
   for (int i =0 ; i < channel_num ; i ++)
   {
-    printf("Change vector of the %dth channel :   ", i+1) ; 
-    fprintf(log_file, "Change vector of the %dth channel :   ", i+1) ; 
+    printf("Channel %d: \tChange vector : (", i+1) ; 
+    fprintf(log_file, "Channel %d: \tChange vector : (", i+1) ; 
     for (int j = 0 ; j < n ; j ++)
     {
-      cout << channel_list[i][j] << ' ' ;
-      fprintf( log_file, "%d ", channel_list[i][j] );
+      printf("%d", channel_list[i][j]) ;
+      fprintf( log_file, "%d", channel_list[i][j] );
+      if (j < n-1) {
+	printf(",");
+	fprintf(log_file, ",");
+      } else 
+      {
+	printf("),\t\t");
+	fprintf(log_file, "),\t\t");
+      }
     }
-    cout << endl ;
-    fprintf(log_file, "\n") ;
+    printf("Occurrence : %d\n", Mi_in_all_traj[i]) ;
+    fprintf(log_file, "Occurrence : %d\n", Mi_in_all_traj[i]) ;
   }
-
-  printf("Occurrence of each reaction channels in these %d trajectories : [%d", N_traj, Mi_in_all_traj[0]) ;
-  fprintf(log_file, "Occurrence of each reaction channels in these %d trajectories : [%d", N_traj, Mi_in_all_traj[0]) ;
-  for (int i = 1 ; i < channel_num ; i ++)
-  {
-    printf(", %d", Mi_in_all_traj[i]) ;
-    fprintf(log_file, ", %d", Mi_in_all_traj[i]) ;
-  }
-  printf("]\n") ;
-  fprintf(log_file, "]\n") ;
 }
 
 /* 
@@ -371,8 +369,8 @@ void write_basis_functions()
     omega_vec[i].resize( num_basis, 0.0 ) ;
 
   // print basis functions into file
-  printf("No. of basis functions = %d\n", num_basis) ;
-  fprintf(log_file, "No. of basis functions = %d\n", num_basis) ;
+  printf("Number of basis functions = %d\n", num_basis) ;
+  fprintf(log_file, "Number of basis functions = %d\n", num_basis) ;
 
   ofstream out_file ;
   char buf[100] ;
@@ -499,8 +497,8 @@ int main ( int argc, char * argv[] )
 
   end = clock() ;
 
-  printf("\n\nRuntime : %4.2f sec.\n\n", (end - start) * 1.0 / CLOCKS_PER_SEC ) ;
-  fprintf(log_file, "\n\nRuntime : %4.2f sec.\n\n", (end - start) * 1.0 / CLOCKS_PER_SEC ) ;
+  printf("\nRuntime : %4.2f sec.\n\n", (end - start) * 1.0 / CLOCKS_PER_SEC ) ;
+  fprintf(log_file, "\nRuntime : %4.2f sec.\n\n", (end - start) * 1.0 / CLOCKS_PER_SEC ) ;
 
   fclose(log_file) ;
 

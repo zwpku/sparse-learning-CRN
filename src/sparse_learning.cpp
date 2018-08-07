@@ -131,8 +131,8 @@ void read_channels_info_from_file()
   sprintf( buf, "./output/channel_info.txt" ) ;
   if ( mpi_rank == 0 )
   {
-    printf("\nReading channel information from file : %s\n\n", buf) ;
-    fprintf(log_file, "\nReading channel information from file : %s\n\n", buf) ;
+    printf("\nReading channel information from file : %s\n", buf) ;
+    fprintf(log_file, "\nReading channel information from file : %s\n", buf) ;
   }
 
   in_file.open(buf) ;
@@ -157,25 +157,6 @@ void read_channels_info_from_file()
     for (int j = 0 ; j < n ; j ++)
       in_file >>  c_state[j] ;
     channel_list.push_back(c_state) ;
-  }
-
-  if ( mpi_rank == 0 ) //  print the channel information
-  {
-    printf("No. of channels : %d\n", channel_num) ;
-    fprintf(log_file, "No. of channels : %d\n", channel_num) ;
-
-    for (int i =0 ; i < channel_num ; i ++)
-    {
-      printf("Change vector of the %dth channel :   ", i+1) ; 
-      fprintf(log_file, "Change vector of the %dth channel :   ", i+1) ; 
-      for (int j = 0 ; j < n ; j ++)
-      {
-	cout << channel_list[i][j] << ' ' ;
-	fprintf( log_file, "%d ", channel_list[i][j] ) ;
-      }
-      cout << endl ;
-      fprintf( log_file, "\n") ;
-    }
   }
 
   in_file.close() ;
@@ -253,16 +234,32 @@ void read_trajectory_data()
 
   if (mpi_rank == 0)
   {
-    printf( "Occurrence of each reaction channels within %d trajectories : [%d", N_traj, Mi_in_all_traj[0]) ;
-    fprintf( log_file, "Occurrence of each reaction channels within %d trajectories : [%d", N_traj, Mi_in_all_traj[0]) ;
-    for (int i = 1 ; i < channel_num ; i ++)
+    printf("\nIn total:  %d reaction channels\n\n", channel_num) ;
+    fprintf(log_file, "\nIn total:  %d reaction channels\n\n", channel_num) ;
+
+    for (int i =0 ; i < channel_num ; i ++)
     {
-      printf( ", %d", Mi_in_all_traj[i] ) ;
-      fprintf( log_file, ", %d", Mi_in_all_traj[i] ) ;
+      printf("Channel %d: \tChange vector : (", i+1) ; 
+      fprintf(log_file, "Channel %d: \tChange vector : (", i+1) ; 
+      for (int j = 0 ; j < n ; j ++)
+      {
+	printf("%d", channel_list[i][j]) ;
+	fprintf( log_file, "%d", channel_list[i][j] );
+	if (j < n-1) {
+	  printf(",");
+	  fprintf(log_file, ",");
+	} else 
+	{
+	  printf("),\t\t");
+	  fprintf(log_file, "),\t\t");
+	}
+      }
+      printf("Occurrence : %d\n", Mi_in_all_traj[i]) ;
+      fprintf(log_file, "Occurrence : %d\n", Mi_in_all_traj[i]) ;
     }
 
-    printf( "]\n\nTotal length of time of %d trajectories : %.4f\n\n", N_traj, total_T ) ;
-    fprintf( log_file, "]\n\nTotal length of time of %d trajectories : %.4f\n\n", N_traj, total_T ) ;
+    printf( "\n\nTotal length of time of %d trajectories : %.4f\n\n", N_traj, total_T ) ;
+    fprintf( log_file, "\n\nTotal length of time of %d trajectories : %.4f\n\n", N_traj, total_T ) ;
   }
 }
 
@@ -309,12 +306,12 @@ void read_basis_functions()
 
   if (mpi_rank == 0)
   {
-    printf("\n Loaded basis functions : %d\n", num_basis) ;
+    printf("\nLoaded basis functions : %d\n", num_basis) ;
     //  read basis indices for each channel
-    printf(" Reading basis functions for each channel...\n") ;
+    printf("Reading basis functions for each channel...\n") ;
 
-    fprintf(log_file, "\n Loaded basis functions : %d\n", num_basis) ;
-    fprintf(log_file, " Reading basis functions for each channel...\n") ;
+    fprintf(log_file, "\nLoaded basis functions : %d\n", num_basis) ;
+    fprintf(log_file, "Reading basis functions for each channel...\n") ;
   }
   in_file >> itmp ;
   assert(itmp == channel_num) ;
@@ -345,11 +342,11 @@ void read_basis_functions()
   //  read sparsity weights of parameters for each channel
   if (mpi_rank == 0) 
   {
-    printf(" Number of unknown parameters : %d\n", total_unknown_omega_parameters ) ;
-    fprintf(log_file, " number of unknown parameters : %d\n", total_unknown_omega_parameters ) ;
+    printf("Number of unknown parameters : %d\n", total_unknown_omega_parameters ) ;
+    fprintf(log_file, "Number of unknown parameters : %d\n", total_unknown_omega_parameters ) ;
 
-    printf(" Reading (relative) weights of each parameter...\n") ;
-    fprintf(log_file, " Reading (relative) weights of each parameter...\n") ;
+    printf("Reading (relative) weights of each parameter...\n") ;
+    fprintf(log_file, "Reading (relative) weights of each parameter...\n") ;
   }
 
   for ( int i = 0 ; i < channel_num ; i ++ )
@@ -365,8 +362,8 @@ void read_basis_functions()
   //  read initial values of parameters for each channel
   if (mpi_rank == 0) 
   {
-    printf(" Reading initial guesses ...\n") ;
-    fprintf(log_file, " Reading initial guesses ...\n") ;
+    printf(" Reading initial guesses ...\n\n") ;
+    fprintf(log_file, " Reading initial guesses ...\n\n") ;
   }
 
   for ( int i = 0 ; i < channel_num ; i ++ )
@@ -548,32 +545,32 @@ void FISTA_backtracking()
       {
 	if (mpi_rank == 0)
 	{
-	  printf( "\nChannel idx=%d\tIteration step: %d\t \tResidual=%.6e ", i, iter_step, residual ) ;
-	  fprintf( log_file, "\nChannel idx=%d\tIteration step: %d\t \tResidual=%.6e ", i, iter_step, residual ) ;
+	  printf( "\nChannel idx = %d\t\tIteration step = %d\t \tResidual = %.6e ", i, iter_step, residual ) ;
+	  fprintf( log_file, "\nChannel idx = %d\t\tIteration step = %d\t \tResidual = %.6e ", i, iter_step, residual ) ;
 	}
 
 	tmp = penalty_g_partial(i,omega_vec, omega_weights) ;
 
 	if (mpi_rank == 0)
 	{
-	  printf( "\nminus-likelihood = %.8f\t penalty g_i(x) : %.4f\t Cost = %.8f\n", fval_new, tmp, fval_new + tmp ) ;
-	  fprintf( log_file, "\nminus-likelihood = %.8f\t penalty g_i(x): %.4f\t Cost = %.8f\n", fval_new, tmp, fval_new + tmp ) ;
+	  printf( "\n\tminus-likelihood = %.8e\t\t penalty g_i(x) = %.4e\t\t Cost = %.8e\n", fval_new, tmp, fval_new + tmp ) ;
+	  fprintf( log_file, "\n\tminus-likelihood = %.8e\t\t penalty g_i(x)= %.4e\t\t Cost = %.8e\n", fval_new, tmp, fval_new + tmp ) ;
 	  print_grad_partial(i, omega_vec) ;
 
-	  out_file << "Channel idx=" << i << "\tIter_step=" << iter_step << endl ;
+	  out_file << "Channel idx=" << i << "\t\tIteration step=" << iter_step << endl << "\t";
 
 	  for (int j = 0 ; j < omega_vec[i].size(); j ++)
 	    out_file << omega_vec[i][j] << ' ' ;
 
-	  out_file << residual << endl ;
+	  out_file << "\t" << fval_new + tmp << "\t" << residual << endl ;
 	}
       }
     }
 
     if (mpi_rank == 0)
     {
-      printf("Solving coefficients for the reaction channel %d... finished. Total iteration steps=%d\n\n", i, iter_step) ;
-      fprintf(log_file, "Solving coefficients for the reaction channel %d... finished. Total iteration steps=%d\n\n", i, iter_step) ;
+      printf("Solving coefficients for the reaction channel %d... finished.\nTotal iteration steps=%d\n\n\n", i, iter_step) ;
+      fprintf(log_file, "Solving coefficients for the reaction channel %d... finished.\nTotal iteration steps=%d\n\n\n", i, iter_step) ;
     }
   }
 
@@ -613,7 +610,11 @@ void direct_compute_channel_with_single_reaction()
   int idx;
   double local_s, s ;
 
-  if (mpi_rank == 0) cout << endl << "Rates of the following channels (contain one reaction) can be direct computed: " << endl << endl ;
+  if (mpi_rank == 0) 
+    {
+      printf("\nDirect calculation of rates of the following channels (contain one reaction):\n") ;
+      fprintf(log_file, "\nDirect calculation of rates of the following channels (contain one reaction):\n") ;
+    }
 
   for ( int i = 0 ; i < channel_num ; i ++ )
     if ( basis_index_per_channel[i].size()==1 )

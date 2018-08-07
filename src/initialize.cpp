@@ -14,8 +14,6 @@ void init_rand_generator()
   char phrase[100] ;
   sprintf( phrase, "%ld", time(NULL) + mpi_rank ) ;
 
-  printf("%s", phrase) ;
-
   phrtsd(phrase, &is1, &is2) ;
   setall(is1, is2) ;
 
@@ -44,8 +42,8 @@ void read_reactions()
 
   if (mpi_rank == 0)
   {
-    printf("\nReading reaction information from : %s\n", buf) ;
-    fprintf(log_file, "\nReading reaction information from : %s\n", buf) ;
+    printf("\nReading reaction information from the file: %s\n", buf) ;
+    fprintf(log_file, "\nReading reaction information from the file: %s\n", buf) ;
   }
 
   // check whether the file is successfully open 
@@ -146,13 +144,13 @@ int init(char * log_file_name )
   { // print information 
     if (know_reactions_flag == 1)
     {
-      printf( "\nNo. of Reactions = %d, \tDim = %d, \tNo. of Procs = %d\n", R, n, mpi_size ) ;
-      fprintf( log_file, "\nNo. of Reactions = %d, \tDim = %d, \tNo. of Procs = %d\n", R, n, mpi_size ) ;
+      printf( "\nNumber of reactions = %d\nDim = %d\nNumber of processors = %d\n\n", R, n, mpi_size ) ;
+      fprintf( log_file, "\nNumber of reactions = %d\nDim = %d\nNumber of processors = %d\n\n", R, n, mpi_size ) ;
     }
     else 
     {
-      printf( "\nNo. of Procs = %d\n", mpi_size ) ;
-      fprintf( log_file, "\nNo. of Procs = %d\n", mpi_size ) ;
+      printf( "\nNumber of processors = %d\n", mpi_size ) ;
+      fprintf( log_file, "\nNumber of processors = %d\n", mpi_size ) ;
     }
   }
 

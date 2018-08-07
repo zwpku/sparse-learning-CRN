@@ -62,17 +62,17 @@ extern vector<double> T_traj_vec;
 // parameter (with indice i, j) is regular_lambda * omega_weights[i][j]
 extern double regular_lambda ;
 
-// delta :      constant \epsilon used in the function G_\epsilon
-//
-// stop_eps :   iteration schemes stop when the difference of two steps is not
-// 	        larger than this value
-//
-// descent_dt : the step-size used in the iterative scheme
-//
-// g_cut :      function G(x) returns x when x/delta >= g_cut
-//
-// eps   : 	parameter used in the epsL1_norm (an approximation of l^1 norm)
-extern double stop_eps , eps , descent_dt, delta, g_cut ;
+/* 
+ * delta :      constant \epsilon used in the function G_\epsilon
+ *
+ * stop_eps :   iteration schemes stop when the difference of two steps is not
+ * 	        larger than this value
+ *
+ * g_cut :      function G(x) returns x when x/delta >= g_cut
+ *
+ * eps   : 	parameter used in the epsL1_norm (an approximation of l^1 norm)
+ */
+extern double stop_eps , eps , delta, g_cut ;
 
 // tot_step : 		total iteration steps 
 // output_interval : 	determine how often to print information during iteration 

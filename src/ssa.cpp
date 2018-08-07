@@ -103,11 +103,11 @@ int main ( int argc, char * argv[] )
 
   if (mpi_rank == 0)
   {
-    printf(" %d trajectories have been generated under directory: ./traj_data/\n", N_traj) ;
-    printf(" Runtime : %4.2f sec.\n\n", (end - start) * 1.0 / CLOCKS_PER_SEC ) ;
+    printf("%d trajectories have been generated under directory: ./traj_data/\n\n", N_traj) ;
+    printf("Runtime : %4.2f sec.\n\n", (end - start) * 1.0 / CLOCKS_PER_SEC ) ;
 
-    fprintf(log_file, " %d trajectories have been generated under directory: ./traj_data/\n", N_traj) ;
-    fprintf(log_file, " Runtime : %4.2f sec.\n\n", (end - start) * 1.0 / CLOCKS_PER_SEC ) ;
+    fprintf(log_file, "%d trajectories have been generated under directory: ./traj_data/\n\n", N_traj) ;
+    fprintf(log_file, "Runtime : %4.2f sec.\n\n", (end - start) * 1.0 / CLOCKS_PER_SEC ) ;
 
     fclose(log_file) ;
   }
