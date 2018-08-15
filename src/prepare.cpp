@@ -54,14 +54,14 @@ void find_channels_in_traj(vector<vector<vector<int> > > & traj_data)
     }
   }
 
-  // channel index starts from 1
+  // channel index starts from 0
   // create list of channels 
   channel_num = 0 ;
   for (set<vector<int> >::iterator it = channel_vec_set.begin() ; it != channel_vec_set.end() ; it ++)
     {
-      channel_num ++ ;
       channel_to_idx[*it] = channel_num ;
       channel_list.push_back(*it) ;
+      channel_num ++ ;
     }
 
   for (int traj_idx = 0 ; traj_idx < N_traj ; traj_idx ++)
@@ -78,7 +78,7 @@ void find_channels_in_traj(vector<vector<vector<int> > > & traj_data)
       idx = channel_to_idx[vec_change] ;
       channel_idx_in_traj[traj_idx][i] = idx ;
       // increase counter 
-      Mi_in_traj[traj_idx][idx - 1] ++ ;
+      Mi_in_traj[traj_idx][idx] ++ ;
     }
   }
 
@@ -99,7 +99,7 @@ void find_channels_in_traj(vector<vector<vector<int> > > & traj_data)
 	// determine channel index of reaction i
 	idx = channel_to_idx[vvec[i]] ;
 	// add to reaction list of the channel 
-	reactions_in_channel[idx-1].push_back(i) ;
+	reactions_in_channel[idx].push_back(i) ;
       }       
       else // something wrong ...
       {
@@ -130,8 +130,8 @@ void output_channel_info()
   char buf[100] ;
   sprintf( buf, "./output/channel_info.txt") ;
 
-  printf("\nInformation of channels are stored into file: %s\n\n", buf) ;
-  fprintf(log_file, "\nInformation of channels are stored into file: %s\n\n", buf) ;
+  printf("\nInformation of channels are written into file: %s\n\n", buf) ;
+  fprintf(log_file, "\nInformation of channels are written into file: %s\n\n", buf) ;
 
   out_file.open(buf) ;
 
@@ -320,25 +320,53 @@ void write_basis_functions()
 {
   vector<int> reactant_idx ;
 
-  reactant_idx.resize(1) ; 
-  // if reaction types are known, 
+  /*
+   * Record vectors of (non-repeated) reactants among the R reactions
+   *
+   * It will only be used in Task 1.
+   *
+   */
+  map<vector<int>, int> vvec_in_map ;
+
+  /* Records the index of basis function for each of R reactions.
+   *
+   * It will only be used in Task 1.
+   */
+  vector<int> basis_idx_of_reactions ;
+  basis_idx_of_reactions.resize(R) ;
+
+  // initialize the vector before including any basis functions
+  basis_vec.resize(0) ;
+
+  // if reaction types are known 
   if (know_reactions_flag == 1)
   {
-    // (Task 1) in this case, we use the R propensity functions as basis functions
+    // (Task 1) in this case, we use the propensity functions of R reactions (excluding the repeated ones) as basis functions
     for (int i = 0; i < R; i ++)
-    {
-      reactant_idx.resize(0) ;
-      for (int j = 0; j < n; j ++)
-	for (int j1 = 0; j1 < vvec_in[i][j] ; j1 ++)
-	  reactant_idx.push_back(j) ;
-	
-      basis_vec.push_back( reactant_idx ) ;
-    }
-    num_basis = R ; 
+      // if the same vector of reactants has not be recorded
+      if ( vvec_in_map.count(vvec_in[i]) == 0 ) 
+	{
+	  reactant_idx.resize(0) ;
+	  for (int j = 0; j < n; j ++)
+	    for (int j1 = 0; j1 < vvec_in[i][j] ; j1 ++)
+	      reactant_idx.push_back(j) ;
+	    
+	  // add this new basis 
+	  basis_vec.push_back( reactant_idx ) ;
+
+	  // record its index
+	  vvec_in_map[ vvec_in[i] ] = basis_vec.size() - 1 ;
+	  basis_idx_of_reactions[i] = basis_vec.size() - 1 ;
+	}
+      else // if the same basis has already occured
+	basis_idx_of_reactions[i] = vvec_in_map[ vvec_in[i] ] ;
+
+    num_basis = vvec_in_map.size() ; 
   }
   else // (Task 2)
   {
     // include polynomial functions of order 1 (linear) as basis functions
+    reactant_idx.resize(1) ; 
     for (int i =0 ; i < n; i++)
     {
       reactant_idx[0] = i ;
@@ -376,8 +404,8 @@ void write_basis_functions()
   char buf[100] ;
   sprintf( buf, "./output/basis_funct_info.txt" ) ;
 
-  printf("Basis functions are stored into the file: %s\n", buf) ;
-  fprintf(log_file, "Basis functions are stored into the file: %s\n", buf) ;
+  printf("Basis functions are written into the file: %s\n", buf) ;
+  fprintf(log_file, "Basis functions are written into the file: %s\n", buf) ;
   out_file.open(buf) ;
   if ( ! out_file.is_open() )
     {
@@ -406,11 +434,17 @@ void write_basis_functions()
       out_file << reactions_in_channel[i].size() << ' ' ;
     out_file << endl ;
 
+    int ridx ;
     // reaction indices for each channel 
     for ( int i = 0 ; i < channel_num ; i ++ )
     {
       for (int j = 0 ; j < reactions_in_channel[i].size() ; j ++)
-	out_file << reactions_in_channel[i][j] << ' ' ;
+      {
+	// get the index of reaction first
+	ridx = reactions_in_channel[i][j] ;
+	// then output the index of the basis function that corresponds to this reaction
+	out_file << basis_idx_of_reactions[ridx] << ' ' ;
+      }
       out_file << endl ;
     }
 
@@ -467,7 +501,9 @@ void write_basis_functions()
 
 int main ( int argc, char * argv[] ) 
 {
+#if USE_MPI == 1
   MPI_Init(&argc, &argv) ;
+#endif
 
   clock_t start , end ;
   char buf[30]; 
@@ -502,7 +538,9 @@ int main ( int argc, char * argv[] )
 
   fclose(log_file) ;
 
+#if USE_MPI == 1
   MPI_Finalize() ; 
+#endif
 
   return 0; 
 }

@@ -96,6 +96,15 @@ int is_zero(double x)
   else return 0 ;
 }
 
+/*
+ * check whether x is non-positive 
+ */
+int is_nonpositive(double x)
+{
+  if (x < 1e-15) return 1 ;
+  else return 0 ;
+}
+
 /* 
  * Compute the weighted l^1 norm of vector (corresponding to certain reaction
  * channel
@@ -395,8 +404,8 @@ double minus_log_likelihood_partial( int i0, vector<vector<double> > & coeff_vec
   for (int traj_idx = 0; traj_idx < local_N_traj; traj_idx ++)
     for (int i = 0; i < num_state_in_traj[traj_idx]-1; i ++) // loop for each jump (or reaction)
   {
-    // subtract by 1, because index starts from one   
-    idx = channel_idx_in_traj[traj_idx][i] - 1 ;
+    // get the index of the channel
+    idx = channel_idx_in_traj[traj_idx][i] ;
 
     // only when the jump is in channel i0 
     if (idx != i0) continue ;
@@ -431,8 +440,12 @@ double minus_log_likelihood_partial( int i0, vector<vector<double> > & coeff_vec
       local_s += waiting_time_vec[traj_idx][i] * G(tmp_ai) ;
     }
 
+#if USE_MPI == 1
   // sum up all processors
   MPI_Allreduce(&local_s, &s, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD) ;
+#else
+  s = local_s ;
+#endif
 
   return s / total_T ;
 }
@@ -471,10 +484,12 @@ void grad_minus_log_likelihood_partial( int i0, vector<vector<double> > & coeff_
       // loop for each jump (reaction)
 	for (int i = 0; i < num_state_in_traj[traj_idx]-1; i ++)
 	{
-	// subtract by 1, because index starts from one   
-	  idx = channel_idx_in_traj[traj_idx][i] - 1 ;
+	  // get the index of the channel
+	  idx = channel_idx_in_traj[traj_idx][i] ;
+
 	  // only when the jump is in channel i0 
 	  if (idx != i0) continue ;
+
 	  // derivative by chain rule
 	  tmp = val_basis_funct( basis_idx, traj_vec[traj_idx][i] ) ;
 	  tmp_ai = val_ai(idx, traj_vec[traj_idx][i], coeff_vec ) ;
@@ -490,8 +505,12 @@ void grad_minus_log_likelihood_partial( int i0, vector<vector<double> > & coeff_
 	  local_s += tmp * dG(tmp_ai) * waiting_time_vec[traj_idx][i] ;
 	}
 
+#if USE_MPI == 1
       // sum up all trajectories among different processors
       MPI_Allreduce(&local_s, &s, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD) ;
+#else
+      s = local_s ;
+#endif
       
       // normalize by dividing the total time 
       grad_coeff[i0][j0] = s / total_T ;
@@ -510,7 +529,11 @@ double shrinkage(double x, double lambda)
   return 0.0;
 }
 
-void print_grad_partial( int i, vector<vector<double> > & coeff_vec )
+/*
+ * output the coefficients, called by rank 0
+ *
+ */
+void print_omega_coefficients( int i, vector<vector<double> > & coeff_vec )
 {
   printf("\tChannel %d (", i) ;
   for (int j = 0 ; j < channel_list[i].size() ; j ++)
@@ -518,7 +541,7 @@ void print_grad_partial( int i, vector<vector<double> > & coeff_vec )
   cout << ") :\t";
   for (int j = 0 ; j < coeff_vec[i].size() ; j ++)
   {
-    cout << coeff_vec[i][j] << '\t' ;
+    cout << std::setprecision(8) << coeff_vec[i][j] << '\t' ;
   }
   cout << endl ;
 }
@@ -643,3 +666,18 @@ double penalty_g_partial(int i, vector<vector<double> > & omega_vec, vector<vect
   else 
     return regular_lambda * epsL1_norm_partial(i, omega_vec, weights) ;
 }
+
+/*
+ * compute the l^1 norm of the difference of two vectors
+ *
+ */
+double difference_of_two_vectors( vector<double> & vec1, vector<double> & vec2 )
+{
+  double s;
+  s = 0 ;
+  for (int i = 0 ; i < vec1.size() ; i ++)
+    s += fabs( vec1[i] - vec2[i] );
+
+  return s ;
+}
+

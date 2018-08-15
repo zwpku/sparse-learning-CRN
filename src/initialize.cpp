@@ -99,8 +99,14 @@ void read_reactions()
 
 int init(char * log_file_name )
 {
+
+#if USE_MPI == 1
   MPI_Comm_rank( MPI_COMM_WORLD, &mpi_rank ) ;
   MPI_Comm_size( MPI_COMM_WORLD, &mpi_size ) ;
+#else
+  mpi_rank = 0 ;
+  mpi_size = 1 ;
+#endif
 
   if (mpi_rank == 0)
   {

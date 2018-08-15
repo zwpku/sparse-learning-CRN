@@ -7,13 +7,17 @@
 #include <fstream>
 #include <sstream>
 #include <iostream>
+#include <iomanip>
 #include <vector>
 #include <map>
 #include <set>
-#include "mpi.h"
 #include <assert.h>
 #include <sys/stat.h>
 #include <unistd.h>
+
+#if USE_MPI == 1
+#include "mpi.h"
+#endif
 
 using namespace std ;
 
@@ -136,7 +140,11 @@ double val_basis_funct(int basis_idx, vector<int> &state) ;
 void grad_minus_log_likelihood_partial(int i, vector<vector<double> > & coeff_vec, vector<vector<double> > & grad_coeff) ;
 double minus_log_likelihood_partial(int i, vector<vector<double> > & coeff_vec) ;
 double val_basis_funct(int basis_idx, vector<int> &state) ;
-void print_grad_partial( int i, vector<vector<double> > & coeff_vec ) ;
+double difference_of_two_vectors( vector<double> & vec1, vector<double> & vec2 ) ;
+
+void print_omega_coefficients( int i, vector<vector<double> > & coeff_vec ) ;
+
 void p_L(int i, double L, vector<vector<double> > & yk, vector<vector<double> > & grad_f, vector<vector<double> > & vec_tmp) ;
 double penalty_g_partial(int i, vector<vector<double> > & omega_vec, vector<vector<double> > & omega_weights) ;
+int is_nonpositive(double x) ;
 

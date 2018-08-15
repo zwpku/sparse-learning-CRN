@@ -62,7 +62,9 @@ void gen_data()
 
 int main ( int argc, char * argv[] ) 
 {
+#if USE_MPI == 1
   MPI_Init(&argc, &argv) ;
+#endif
 
   clock_t start , end ;
   char buf[30]; 
@@ -112,7 +114,9 @@ int main ( int argc, char * argv[] )
     fclose(log_file) ;
   }
 
+#if USE_MPI == 1
   MPI_Finalize() ; 
+#endif
 
   return 0; 
 }

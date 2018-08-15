@@ -1,14 +1,66 @@
 
-CFLAGS=-g -O2 -DMPICH_IGNORE_CXX_SEEK -DDEBUG
+# 
+# If USE_MPI=0, build a sequential code ;  
+# Otherwise, build a parallel code using MPI
+USE_MPI = 0
 
-LOCAL_DIR=/home/mi/weizhang/local/
-#LOCAL_DIR=/home/mi/weizhang/local/
+ifeq ($(USE_MPI), 0) 
+  CFLAGS=-g -O2 -DDEBUG 
+  CC=g++
+else
+  CFLAGS=-g -O2 -DMPICH_IGNORE_CXX_SEEK -DDEBUG -DUSE_MPI
+  CC=mpicxx
+endif
 
-LDFLAGS=-Wl,-rpath,$(LOCAL_DIR)/lib -L$(LOCAL_DIR)/lib -lm -lpthread -lconfig++ -lranlib 
+#
+# This package relies on the following external libraries :
+#   
+#   1.	libconfig 
+#
+#   	Webpage: https://github.com/hyperrealm/libconfig
+#
+#   	This library is used to process the configuration file :  ./working_dir/sparse_learning.cfg
+#
+#   2.	RANLIB.C  
+#
+#   	Webpage: http://www.netlib.org/random/ranlib.c.tar.gz 
+#
+#       This library contains several random number generators. 	
+#       It is used in the code ssa.cpp to generate random trajectories of reactions.
+#
+# In order to build a parallel code, the package also needs 
+#   
+#   3.  MPICH
+#
+#	The trajectory data will be analysed by different processors.
+#	Therefore, a parallel code is helpful, when there are multiple
+#	trajectories.
+#
 
+# 
+# Define directories containing header files.
+#
+# In particular, please specify 
+#
+# 	1. the directory containing libconfig.h++. This is required by the library libconfig.
+#
+# 	2. the directory containing ranlib.h, This is required by the library RANLIB.C.
+#
+# and, if a parallel version is wanted (USE_MPI=1), 
+#
+# 	3. the directory containing mpi.h, required by MPICH.
+#
 INCLUDES=-I$(LOCAL_DIR)/include 
 
-CC=mpicxx
+#
+# Define directories containing library files.
+#
+# In particular, please specify the directories containing 
+# the library files for the external packages mentioned above.  
+#
+LOCAL_DIR=/home/mi/weizhang/local/
+
+LDFLAGS=-Wl,-rpath,$(LOCAL_DIR)/lib -L$(LOCAL_DIR)/lib -lm -lpthread -lconfig++ -lranlib 
 
 SOURCES=param.cpp config.cpp initialize.cpp utils.cpp ssa.cpp sparse_learning.cpp prepare.cpp
 
