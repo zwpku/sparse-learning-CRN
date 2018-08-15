@@ -2,6 +2,7 @@
 # 
 # If USE_MPI=0, build a sequential code ;  
 # Otherwise, build a parallel code using MPI
+#
 USE_MPI = 0
 
 ifeq ($(USE_MPI), 0) 
@@ -38,7 +39,7 @@ endif
 #
 
 # 
-# Define directories containing header files.
+# Define directories containing header files and library files.
 #
 # In particular, please specify 
 #
@@ -50,15 +51,8 @@ endif
 #
 # 	3. the directory containing mpi.h, required by MPICH.
 #
+LOCAL_DIR=/home/wzhang/local/
 INCLUDES=-I$(LOCAL_DIR)/include 
-
-#
-# Define directories containing library files.
-#
-# In particular, please specify the directories containing 
-# the library files for the external packages mentioned above.  
-#
-LOCAL_DIR=/home/mi/weizhang/local/
 
 LDFLAGS=-Wl,-rpath,$(LOCAL_DIR)/lib -L$(LOCAL_DIR)/lib -lm -lpthread -lconfig++ -lranlib 
 
