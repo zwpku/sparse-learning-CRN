@@ -21,7 +21,7 @@ If one wants to build a parallel code, one also needs
 
 ## DOWNLOAD
 
-git clone https://github.com/zwpku/sparse-learning-CRN.git
+git clone ht<span>tps://<span>github.com/zwpku/sparse-learning-CRN.git
 
 ## COMPILE & INSTALL
 
