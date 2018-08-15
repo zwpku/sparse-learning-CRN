@@ -14,32 +14,12 @@ else
 endif
 
 #
-# This package relies on the following external libraries :
-#   
-#   1.	libconfig 
+# This package relies on the external libraries libconfig and RANLIB.C  
 #
-#   	Webpage: https://github.com/hyperrealm/libconfig
-#
-#   	This library is used to process the configuration file :  ./working_dir/sparse_learning.cfg
-#
-#   2.	RANLIB.C  
-#
-#   	Webpage: http://www.netlib.org/random/ranlib.c.tar.gz 
-#
-#       This library contains several random number generators. 	
-#       It is used in the code ssa.cpp to generate random trajectories of reactions.
-#
-# In order to build a parallel code, the package also needs 
-#   
-#   3.  MPICH
-#
-#	The trajectory data will be analysed by different processors.
-#	Therefore, a parallel code is helpful, when there are multiple
-#	trajectories.
-#
-
+# In order to build a parallel code, the package also needs the MPICH library.
 # 
-# Define directories containing header files and library files.
+# The directories containing the header files and library files of these
+# external libraries should be provided.
 #
 # In particular, please specify 
 #
