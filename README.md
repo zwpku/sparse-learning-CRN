@@ -10,20 +10,34 @@ This package relies on the following external libraries.
    	This library is used to process the configuration file: [./working_dir/sparse_learning.cfg](./working_dir/sparse_learning.cfg).
 
    2.	[RANLIB.C](http://www.netlib.org/random/ranlib.c.tar.gz).
-       	This library contains several random number generators. 
-	It is used in the code ssa.cpp to generate random trajectories of reactions.
+       	This library provides random number generators. 
+	It is used in the code [./src/ssa.cpp](./src/ssa.cpp) to generate random trajectories of reactions.
 
 If one wants to build a parallel code, one also needs
    
    3.  	[MPICH](https://www.mpich.org).
-	The trajectory data will be analysed by different processors. 
+	The trajectory data will be distributed and analysed by different processors. 
 	Therefore, a parallel code is helpful, when there are multiple trajectories.
 
-## DOWNLOAD
-
-git clone ht<span>tps://<span>github.com/zwpku/sparse-learning-CRN.git
-
 ## COMPILE & INSTALL
+
+1. Install the above libraries, if necessary.
+
+2. Download the source code:
+
+	git clone ht<span>tps://<span>github.com/zwpku/sparse-learning-CRN.git
+
+   The code should be avaiable in the directory ./sparse_learning_CRN
+
+3. Enter the directory ./sparse_learning_CRN/src 
+
+  	cd ./sparse_learning_CRN/src
+
+4. Make sure paths of the directories containing the headers and library files are provided.  
+
+5. Compile:
+
+        make 
 
 ## LICENSING
 
