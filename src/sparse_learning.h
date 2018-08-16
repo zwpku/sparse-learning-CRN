@@ -53,6 +53,18 @@ extern int tot_num_reaction_in_traj ;
  */
 extern int epsL1_flag ;
 
+/* 
+ * Decide which solver will be used to solve the optimization problem.
+ *
+ * solver_id = 1, ''ISTA with backtracking'' method
+ * solver_id = 2, ''FISTA with backtracking'' method
+ * solver_id = 3, simple gradient descent method (Only in the case when epsL1_flag=1) 
+ *
+ */
+extern int solver_id ;
+
+extern double grad_dt ;
+
 // T :   length of trajectories when they are simulated using SSA method
 extern double T ;
 

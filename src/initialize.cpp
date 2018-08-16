@@ -150,15 +150,14 @@ int init(char * log_file_name )
   { // print information 
     if (know_reactions_flag == 1)
     {
-      printf( "\nNumber of reactions = %d\nDim = %d\nNumber of processors = %d\n\n", R, n, mpi_size ) ;
-      fprintf( log_file, "\nNumber of reactions = %d\nDim = %d\nNumber of processors = %d\n\n", R, n, mpi_size ) ;
+      printf( "\nNumber of reactions = %d,\tDim = %d\n", R, n) ;
+      fprintf( log_file, "\nNumber of reactions = %d,\tDim = %d\n", R, n) ;
     }
-    else 
-    {
-      printf( "\nNumber of processors = %d\n", mpi_size ) ;
-      fprintf( log_file, "\nNumber of processors = %d\n", mpi_size ) ;
-    }
+
+    printf( "\nNumber of processors = %d\n\n", mpi_size ) ;
+    fprintf( log_file, "\nNumber of processors = %d\n\n", mpi_size ) ;
   }
+
 
   return 0 ;
 }

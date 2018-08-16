@@ -65,6 +65,12 @@ int read_config()
   if ( read_value(cfg, string("epsL1_flag"), epsL1_flag) < 0 )
     return -1;
 
+  if ( read_value(cfg, string("solver_id"), solver_id) < 0 )
+    return -1;
+
+  if ( read_value(cfg, string("grad_dt"), grad_dt) < 0 )
+    return -1;
+
   if ( read_value(cfg, string("eps"), eps) < 0 )
     return -1;
 

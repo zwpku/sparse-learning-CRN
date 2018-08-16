@@ -14,12 +14,9 @@
  */
 double G(double x)
 {
-  if (know_reactions_flag == 1) return x ;
-  else {
-    if (x >= g_cut * delta) return x;
-    if (x <= -g_cut * delta) return 0.0 ;
-    return delta * log( 1 + exp( x / delta ) ) ;
-  }
+  if (x >= g_cut * delta) return x;
+  if (x <= -g_cut * delta) return 0.0 ;
+  return delta * log( 1 + exp( x / delta ) ) ;
 }
 
 /* 
@@ -28,13 +25,9 @@ double G(double x)
  */
 double dG(double x)
 {
-  if (know_reactions_flag == 1) return 1 ;
-  else 
-  {
-    if (x >= g_cut * delta) return 1.0 ;
-    if (x <= -g_cut * delta) return 0.0 ;
-    return 1.0 / (1 + exp(-x / delta)) ;
-  }
+  if (x >= g_cut * delta) return 1.0 ;
+  if (x <= -g_cut * delta) return 0.0 ;
+  return 1.0 / (1 + exp(-x / delta)) ;
 }
 
 /* 
@@ -42,25 +35,13 @@ double dG(double x)
  */
 double logG(double x)
 {
-  if (know_reactions_flag == 1) 
-  {
-    if (x <= 0) 
-    {
-      printf("Error: Can not compute ln(%.4f)!\n", x) ;
-      exit(1) ;
-    }
-    return log(x) ;
-  }
-  else 
-  {
-    double tmp ;
-    tmp = x / delta ;
-    if (tmp > g_cut) 
-      return log(x) + exp(-tmp) / tmp ;
-    if (tmp < -g_cut)
-      return x / delta + log(delta) ;
-    return log(delta) + log( log(1 + exp(tmp)) ) ;
-  }
+  double tmp ;
+  tmp = x / delta ;
+  if (tmp > g_cut) 
+    return log(x) + exp(-tmp) / tmp ;
+  if (tmp < -g_cut)
+    return x / delta + log(delta) ;
+  return log(delta) + log( log(1 + exp(tmp)) ) ;
 }
 
 /* 
@@ -68,23 +49,11 @@ double logG(double x)
  */
 double d_logG(double x)
 {
-  if (know_reactions_flag == 1) 
-  {
-    if (x <= 0) 
-    {
-      printf("Error: x=%.4f <= 0! \n", x) ;
-      exit(1) ;
-    }
-    return 1.0 / x;
-  }
-  else 
-  {
-    double tmp ;
-    tmp = x / delta ;
-    if (tmp > g_cut) return 1.0 / x ;
-    if (tmp < -g_cut) return 1.0 / ( (1.0 + exp(tmp)) * delta ) ;
-    return 1.0 / (delta * (1 + exp(-tmp)) * log(1 + exp(tmp))) ;
-  }
+  double tmp ;
+  tmp = x / delta ;
+  if (tmp > g_cut) return 1.0 / x ;
+  if (tmp < -g_cut) return 1.0 / ( (1.0 + exp(tmp)) * delta ) ;
+  return 1.0 / (delta * (1 + exp(-tmp)) * log(1 + exp(tmp))) ;
 }
 
 /*
@@ -102,6 +71,15 @@ int is_zero(double x)
 int is_nonpositive(double x)
 {
   if (x < 1e-15) return 1 ;
+  else return 0 ;
+}
+
+/*
+ * check whether x is negative
+ */
+int is_negative(double x)
+{
+  if (x < -1e-12) return 1 ;
   else return 0 ;
 }
 
@@ -412,21 +390,24 @@ double minus_log_likelihood_partial( int i0, vector<vector<double> > & coeff_vec
 
     tmp_ai = val_ai(idx, traj_vec[traj_idx][i], coeff_vec) ;
 
-    // since the channel occurs in trajectory, the propensity ai should be
-    // positive
-    if ( is_zero(tmp_ai) )
-    {
-      printf( "Error: ai=0! i=%d, idx=%d", i, idx ) ;
-
-      if (mpi_rank == 0)
-	fprintf( log_file, "Error: ai=0! i=%d, idx=%d", i, idx ) ;
-
-      dump_info(idx, tmp_ai, traj_vec[traj_idx][i], coeff_vec ) ;
-      exit(1) ;
-    }
-
     // compute the first part of the log-likelihood function
-    local_s += -logG(tmp_ai) ;
+    if (know_reactions_flag == 1) 
+    {
+      /* 
+       * When we know the reaction systems and solve the coefficients by
+       * maximizing log-likelihood function,  the propensity ai needs to 
+       * be positive. 
+       */
+      if ( (is_nonpositive(tmp_ai)) && (mpi_rank == 0) )
+      {
+	printf( "Error: ai is nonpositive! i=%d, idx=%d", i, idx ) ;
+	fprintf( log_file, "Error: ai is nonpositive! i=%d, idx=%d", i, idx ) ;
+	dump_info(idx, tmp_ai, traj_vec[traj_idx][i], coeff_vec ) ;
+	exit(1) ;
+      } else 
+	local_s += -log(tmp_ai) ;
+    } else 
+      local_s += -logG(tmp_ai) ;
   }
 
   // process trajectories that are distributed on the local processor
@@ -436,8 +417,20 @@ double minus_log_likelihood_partial( int i0, vector<vector<double> > & coeff_vec
     {
       tmp_ai = val_ai( i0, traj_vec[traj_idx][i], coeff_vec ) ;
 
-    // compute the second part of the log-likelihood function
-      local_s += waiting_time_vec[traj_idx][i] * G(tmp_ai) ;
+      // compute the second part of the log-likelihood function
+      if (know_reactions_flag == 1)
+      {
+	// again, check whether is negative
+	if ( (is_negative(tmp_ai)) && (mpi_rank == 0) )
+	{
+	  printf( "Error: ai is negative ! i=%d, idx=%d", i, idx ) ;
+	  fprintf( log_file, "Error: ai is negative ! i=%d, idx=%d", i, idx ) ;
+	  dump_info(idx, tmp_ai, traj_vec[traj_idx][i], coeff_vec ) ;
+	  exit(1) ;
+	} else 
+	  local_s += waiting_time_vec[traj_idx][i] * tmp_ai ;
+      } else 
+	local_s += waiting_time_vec[traj_idx][i] * G(tmp_ai) ;
     }
 
 #if USE_MPI == 1
@@ -493,7 +486,20 @@ void grad_minus_log_likelihood_partial( int i0, vector<vector<double> > & coeff_
 	  // derivative by chain rule
 	  tmp = val_basis_funct( basis_idx, traj_vec[traj_idx][i] ) ;
 	  tmp_ai = val_ai(idx, traj_vec[traj_idx][i], coeff_vec ) ;
-	  local_s -= tmp * d_logG(tmp_ai) ;
+
+	  if (know_reactions_flag == 1)
+	  {
+	    // check positivity
+	    if ( (is_nonpositive(tmp_ai)) && (mpi_rank == 0) )
+	    {
+	      printf( "Error: ai is nonpositive! i=%d, idx=%d", i, idx ) ;
+	      fprintf( log_file, "Error: ai is nonpositive! i=%d, idx=%d", i, idx ) ;
+	      dump_info(idx, tmp_ai, traj_vec[traj_idx][i], coeff_vec ) ;
+	      exit(1) ;
+	    } else 
+	      local_s -= tmp / tmp_ai ;
+	  } else
+	    local_s -= tmp * d_logG(tmp_ai) ;
 	}
 
       // gradient of the second part
@@ -502,7 +508,20 @@ void grad_minus_log_likelihood_partial( int i0, vector<vector<double> > & coeff_
 	{
 	  tmp = val_basis_funct( basis_idx, traj_vec[traj_idx][i] ) ;
 	  tmp_ai = val_ai(i0, traj_vec[traj_idx][i], coeff_vec ) ;
-	  local_s += tmp * dG(tmp_ai) * waiting_time_vec[traj_idx][i] ;
+
+	  if (know_reactions_flag == 1)
+	  {
+	    // check whether is negative
+	    if ( (is_negative(tmp_ai)) && (mpi_rank == 0) )
+	    {
+	      printf( "Error: ai is negative ! i=%d, idx=%d", i, idx ) ;
+	      fprintf( log_file, "Error: ai is negative ! i=%d, idx=%d", i, idx ) ;
+	      dump_info(idx, tmp_ai, traj_vec[traj_idx][i], coeff_vec ) ;
+	      exit(1) ;
+	    } else 
+	      local_s += tmp * waiting_time_vec[traj_idx][i] ;
+	  } else
+	    local_s += tmp * dG(tmp_ai) * waiting_time_vec[traj_idx][i] ;
 	}
 
 #if USE_MPI == 1

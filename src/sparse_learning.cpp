@@ -435,14 +435,188 @@ void output_omega()
   out_file << endl ;
 
   for (int i = 0; i < channel_num; i ++)
+  {
     for (int j = 0 ; j < omega_vec[i].size(); j ++)
       out_file << std::setprecision(8) << omega_vec[i][j] << ' ';
+    out_file << endl ;
+  }
 
   out_file << endl ;
   out_file.close() ;
 
   printf("Results are written in the file: %s\n\n", buf) ;
   fprintf(log_file, "Results are written in the file: %s\n\n", buf) ;
+}
+
+/*
+ * 
+ * Iterative Shrinkage-Thresholding Algorithm (with backtracking) for solving the unknown parameters
+ *
+ * This function implements the ''ISTA with backtracking'' method in the paper:
+ *
+ *  	A. Beck and M. Teboulle, "A fast iterative shrinkage-thresholding algorithm for 
+ *   linear inverse problems",  SIAM Journal on Imaging Sciences, vol. 2, no. 1, pp. 183–202, 2009. 
+ *
+ *
+ * This function is similar to the function FISTA_backtracking(). It can be used to compare different numerical schemes. 
+ *
+ */
+void ISTA_backtracking()
+{
+  double residual, tmp ;
+  int iter_step ; 
+  vector<vector<double> > omega_grad_vec ;
+  ofstream out_file ;
+  char buf[100] ;
+
+  // used in ISTA 
+  vector<vector<double> > vec_tmp ;
+  double L0, eta, Lbar ;
+  double fval_old, fval_new ;
+
+  omega_grad_vec.resize( channel_num ) ;
+  vec_tmp.resize( channel_num ) ;
+  for (int i = 0; i < channel_num; i ++)
+  {
+    vec_tmp[i].resize( basis_index_per_channel[i].size() ) ;
+    omega_grad_vec[i].resize( basis_index_per_channel[i].size() ) ;
+  }
+
+  // initialize constants in ISTA
+  L0 = 1.0 ;
+  eta = 2.0 ;
+
+  /* 
+   *
+   * The log-likelihood function ln L(w) can be written as 
+   * 	ln L(w) = \sum_{i=1}^K ln L_i(w_i), 
+   * i.e., unknown parameters belonging to different reaction channels are decoupled.
+   *
+   * Therefore, we solve the unknown coefficients for one channel after another.
+   *
+   */
+  for (int i =0 ; i < channel_num; i ++)
+  {
+
+    if (mpi_rank == 0)
+    {
+      printf("Solving coefficients for the reaction channel %d...\n", i) ;
+      fprintf(log_file, "Solving coefficients for the reaction channel %d...\n", i) ;
+
+      sprintf( buf, "./output/iteration_omega_vec_for_channel_%d.txt", i) ;
+
+      out_file.open(buf) ;
+      if ( out_file.is_open() == 0 ) 
+	{
+	  printf("Error: can not open file : %s. \n\n", buf) ;
+	  fprintf(log_file, "Error: can not open file : %s. \n\n", buf) ;
+	  exit(1) ;
+	}
+      // number of unknown coefficients in the current channel
+      out_file << basis_index_per_channel[i].size() << endl ;
+    }
+
+    // initialize 
+    iter_step = 0 ;
+
+    // update the parameters iteratively
+    while ( iter_step < tot_step ) 
+    {
+      residual = 0.0 ;
+      Lbar = L0 ;
+
+      // compute the gradient of the log-likelihood functions
+      grad_minus_log_likelihood_partial(i, omega_vec, omega_grad_vec) ;
+
+      // evaluate the function at the old point x_{k-1}
+      fval_old = minus_log_likelihood_partial(i, omega_vec) ; 
+
+      /* 
+       * compute Lbar
+       *
+       * After iteration, vec_tmp contains the updated state p_L(x_{k-1})
+       */
+      while (1) 
+      {
+	// projection by shrinkage
+	p_L(i, Lbar, omega_vec, omega_grad_vec, vec_tmp) ;
+
+	// evaluate the function at new point
+	fval_new = minus_log_likelihood_partial(i, vec_tmp) ; 
+
+	// compute the function Q_L(x,y) ( without the term g(x)! ) 
+	tmp = fval_old ;
+	for (int j = 0 ; j < basis_index_per_channel[i].size() ; j ++)
+	  tmp += (vec_tmp[i][j] - omega_vec[i][j]) * omega_grad_vec[i][j] + Lbar * 0.5 * (vec_tmp[i][j] - omega_vec[i][j]) * (vec_tmp[i][j] - omega_vec[i][j]) ;
+
+	// check whether the condition is satisfied
+	if (fval_new <= tmp) break ;
+
+	// if not, increase the constant Lbar 
+	Lbar *= eta ;
+      }
+
+      // compute residual
+      residual = difference_of_two_vectors(omega_vec[i], vec_tmp[i]) / basis_index_per_channel[i].size() ;
+
+      // check if the stop criteria is achieved
+      if (residual < stop_eps) break ;
+
+      // update x_k
+      for (int j = 0 ; j < basis_index_per_channel[i].size() ; j ++)
+	omega_vec[i][j] = vec_tmp[i][j] ;
+
+      iter_step ++ ;
+      if (iter_step % output_interval == 0) // print information 
+      {
+	if (mpi_rank == 0)
+	{
+	  printf( "\nChannel idx = %d\t\tIteration step = %d\t \tResidual = %.6e ", i, iter_step, residual ) ;
+	  fprintf( log_file, "\nChannel idx = %d\t\tIteration step = %d\t \tResidual = %.6e ", i, iter_step, residual ) ;
+	}
+
+	tmp = penalty_g_partial(i,omega_vec, omega_weights) ;
+
+	if (mpi_rank == 0)
+	{
+	  printf( "\n\tminus-likelihood = %.8e\t\t penalty g_i(x) = %.5e\t\t Cost = %.8e\n", fval_new, tmp, fval_new + tmp ) ;
+	  fprintf( log_file, "\n\tminus-likelihood = %.8e\t\t penalty g_i(x)= %.4e\t\t Cost = %.8e\n", fval_new, tmp, fval_new + tmp ) ;
+
+	  print_omega_coefficients(i, omega_vec) ;
+
+	  out_file << iter_step << "\t" << std::setprecision(8) ;
+
+	  for (int j = 0 ; j < basis_index_per_channel[i].size() ; j ++)
+	    out_file << omega_vec[i][j] << ' ' ;
+
+	  out_file << "\t" << std::setprecision(8) << fval_new + tmp << "\t" << residual << endl ;
+	}
+      }
+    }
+
+    if (mpi_rank == 0)
+    {
+      printf("\nSolving coefficients for the reaction channel %d... finished.\nTotal iteration steps=%d,\t Final residual=%.4e\n\n", i, iter_step, residual ) ;
+      fprintf(log_file, "\nSolving coefficients for the reaction channel %d... finished.\nTotal iteration steps=%d,\t Final residual=%.4e\n\n", i, iter_step, residual ) ;
+
+      out_file.close() ;
+    }
+  }
+
+  tmp = 0 ;
+  for (int i = 0 ; i < channel_num ; i ++)
+  {
+    tmp += minus_log_likelihood_partial( i, omega_vec ) ;
+    tmp += penalty_g_partial( i, omega_vec, omega_weights ) ;
+  }
+
+  if (mpi_rank == 0) 
+  {
+    printf( "Final cost = %.6f\n\n", tmp ) ;
+    fprintf( log_file, "Final cost = %.6f\n\n", tmp ) ;
+
+    output_omega() ;
+  }
 }
 
 /*
@@ -457,7 +631,6 @@ void output_omega()
 void FISTA_backtracking()
 {
   double residual, tmp ;
-  double new_omega ;
   int iter_step ; 
   vector<vector<double> > omega_grad_vec ;
   ofstream out_file ;
@@ -467,7 +640,6 @@ void FISTA_backtracking()
   vector<vector<double> > vec_tmp, yk ;
   double L0, t1, eta, Lbar, t_new, t_old ;
   double fval_old, fval_new ;
-
 
   omega_grad_vec.resize( channel_num ) ;
   vec_tmp.resize( channel_num ) ;
@@ -533,10 +705,10 @@ void FISTA_backtracking()
       // evaluate the function at old point yk
       fval_old = minus_log_likelihood_partial(i, yk) ; 
 
-      /* compute Lbar
+      /* 
+       * compute Lbar
        *
        * After iteration, vec_tmp contains the updated state p_L(yk)
-       *
        */
       while (1) 
       {
@@ -577,6 +749,144 @@ void FISTA_backtracking()
 
       // update t_k
       t_old = t_new ;
+
+      iter_step ++ ;
+      if (iter_step % output_interval == 0) // print information 
+      {
+	if (mpi_rank == 0)
+	{
+	  printf( "\nChannel idx = %d\t\tIteration step = %d\t \tResidual = %.6e ", i, iter_step, residual ) ;
+	  fprintf( log_file, "\nChannel idx = %d\t\tIteration step = %d\t \tResidual = %.6e ", i, iter_step, residual ) ;
+	}
+
+	tmp = penalty_g_partial(i,omega_vec, omega_weights) ;
+
+	if (mpi_rank == 0)
+	{
+	  printf( "\n\tminus-likelihood = %.8e\t\t penalty g_i(x) = %.5e\t\t Cost = %.8e\n", fval_new, tmp, fval_new + tmp ) ;
+	  fprintf( log_file, "\n\tminus-likelihood = %.8e\t\t penalty g_i(x)= %.4e\t\t Cost = %.8e\n", fval_new, tmp, fval_new + tmp ) ;
+
+	  print_omega_coefficients(i, omega_vec) ;
+
+	  out_file << iter_step << "\t" << std::setprecision(8) ;
+
+	  for (int j = 0 ; j < basis_index_per_channel[i].size() ; j ++)
+	    out_file << omega_vec[i][j] << ' ' ;
+
+	  out_file << "\t" << std::setprecision(8) << fval_new + tmp << "\t" << residual << endl ;
+	}
+      }
+    }
+
+    if (mpi_rank == 0)
+    {
+      printf("\nSolving coefficients for the reaction channel %d... finished.\nTotal iteration steps=%d,\t Final residual=%.4e\n\n", i, iter_step, residual ) ;
+      fprintf(log_file, "\nSolving coefficients for the reaction channel %d... finished.\nTotal iteration steps=%d,\t Final residual=%.4e\n\n", i, iter_step, residual ) ;
+
+      out_file.close() ;
+    }
+  }
+
+  tmp = 0 ;
+  for (int i = 0 ; i < channel_num ; i ++)
+  {
+    tmp += minus_log_likelihood_partial( i, omega_vec ) ;
+    tmp += penalty_g_partial( i, omega_vec, omega_weights ) ;
+  }
+
+  if (mpi_rank == 0) 
+  {
+    printf( "Final cost = %.6f\n\n", tmp ) ;
+    fprintf( log_file, "Final cost = %.6f\n\n", tmp ) ;
+
+    output_omega() ;
+  }
+}
+
+/*
+ *
+ * Simple gradient descent method (with fixed step size) to solve the smooth optimization problem,
+ * i.e., when either epsL1_flag=1 or know_reactions_flag=1.
+ * (in the latter case there is no penalty term)
+ *
+ */
+
+void grad_descent_smooth() 
+{
+  double residual, tmp ;
+  int iter_step ; 
+  vector<vector<double> > omega_grad_vec ;
+  ofstream out_file ;
+  char buf[100] ;
+
+  vector<vector<double> > vec_tmp ;
+  double fval_old, fval_new ;
+
+  omega_grad_vec.resize( channel_num ) ;
+  vec_tmp.resize( channel_num ) ;
+  for (int i = 0; i < channel_num; i ++)
+  {
+    vec_tmp[i].resize( basis_index_per_channel[i].size() ) ;
+    omega_grad_vec[i].resize( basis_index_per_channel[i].size() ) ;
+  }
+
+  /* 
+   *
+   * The log-likelihood function ln L(w) can be written as 
+   * 	ln L(w) = \sum_{i=1}^K ln L_i(w_i), 
+   * i.e., unknown parameters belonging to different reaction channels are decoupled.
+   *
+   * Therefore, we solve the unknown coefficients for one channel after another.
+   *
+   */
+  for (int i =0 ; i < channel_num; i ++)
+  {
+
+    if (mpi_rank == 0)
+    {
+      printf("Solving coefficients for the reaction channel %d...\n", i) ;
+      fprintf(log_file, "Solving coefficients for the reaction channel %d...\n", i) ;
+
+      sprintf( buf, "./output/iteration_omega_vec_for_channel_%d.txt", i) ;
+
+      out_file.open(buf) ;
+      if ( out_file.is_open() == 0 ) 
+	{
+	  printf("Error: can not open file : %s. \n\n", buf) ;
+	  fprintf(log_file, "Error: can not open file : %s. \n\n", buf) ;
+	  exit(1) ;
+	}
+      // number of unknown coefficients in the current channel
+      out_file << basis_index_per_channel[i].size() << endl ;
+    }
+
+    // initialize 
+    iter_step = 0 ;
+
+    // update the parameters iteratively
+    while ( iter_step < tot_step ) 
+    {
+      residual = 0.0 ;
+
+      // compute the gradient of the log-likelihood functions
+      grad_minus_log_likelihood_partial(i, omega_vec, omega_grad_vec) ;
+
+      // update the vector by gradient descent
+      for (int j = 0 ; j < basis_index_per_channel[i].size() ; j ++)
+      {
+	tmp = omega_vec[i][j] ;
+	vec_tmp[i][j] = omega_vec[i][j] - grad_dt * ( omega_grad_vec[i][j] + regular_lambda * omega_weights[i][j] * tmp / sqrt(tmp * tmp + eps) ) ;
+      }
+
+      // compute residual
+      residual = difference_of_two_vectors(omega_vec[i], vec_tmp[i]) / basis_index_per_channel[i].size() ;
+
+      // check if the stop criteria is achieved
+      if (residual < stop_eps) break ;
+
+      // update x_k
+      for (int j = 0 ; j < basis_index_per_channel[i].size() ; j ++)
+	omega_vec[i][j] = vec_tmp[i][j] ;
 
       iter_step ++ ;
       if (iter_step % output_interval == 0) // print information 
@@ -679,6 +989,61 @@ void direct_compute_channel_with_single_reaction()
     }
 }
 
+void check_solver_id()
+{
+  if ( (solver_id > 3) || (solver_id < 1) )
+    {
+      if (mpi_rank == 0)
+      {
+	printf( "Warning: No such solver (solver_id=%d)!  Reset to solver_id=1 (FISTA method) \n\n", solver_id) ;
+	fprintf( log_file, "Warning: No such solver (solver_id=%d)!  Reset to solver_id=1 (FISTA method) \n\n", solver_id) ;
+      }
+      solver_id = 1 ;
+    }
+
+  if (solver_id == 3) 
+  {
+    if ( (know_reactions_flag==0) && (epsL1_flag==0) )
+    {
+      if (mpi_rank == 0)
+      {
+	printf( "Warning:  The gradient descent method (solver_id=3) can only be used when the object function is smooth, not for l^1 sparsity optimization. Reset solver_id=1 (FISTA method) \n\n") ;
+	fprintf( log_file, "Warning:  The gradient descent method (solver_id=3) can only be used when the object function is smooth, not for l^1 sparsity optimization. Reset solver_id=1 (FISTA method) \n\n") ;
+      }
+      solver_id = 1 ;
+    }  
+    else 
+      if ( (is_nonpositive(grad_dt)==1) && (mpi_rank == 0) )
+	  {
+	    printf("Error: step-size in the gradient descent method=%.4f, It should be positve!\n\n", grad_dt) ; 
+	    fprintf(log_file, "Error: step-size in the gradient descent method=%.4f, It should be positve!\n\n", grad_dt) ; 
+	    exit(1) ;
+	  }
+  }
+
+  // print information about the solver 
+  if (mpi_rank == 0) 
+  {
+    printf("solver_id=%d\n", solver_id);
+    fprintf(log_file, "solver_id=%d\n", solver_id);
+
+    switch (solver_id) {
+    case 1:
+	printf( "Fast Iterative Shrinkage-Thresholding Algorithm (FISTA) will be used to solve the coefficients.\n\n" ) ; 
+	fprintf( log_file, "Fast Iterative Shrinkage-Thresholding Algorithm (FISTA) will be used to solve the coefficients.\n\n" ) ; 
+	break ;
+    case 2:
+	printf( "Iterative Shrinkage-Thresholding Algorithm (ISTA) will be used to solve the coefficients.\n\n" ) ; 
+	fprintf( log_file, "Iterative Shrinkage-Thresholding Algorithm (ISTA) will be used to solve the coefficients.\n\n" ) ; 
+	break ;
+    case 3:
+	printf("gradient descent method will be used. step-size=%.4f.\n\n", grad_dt) ; 
+	fprintf( log_file, "gradient descent method will be used. step-size=%.4f.\n\n", grad_dt) ; 
+	break ;
+    }
+  }
+}
+
 int main ( int argc, char * argv[] ) 
 {
 
@@ -690,17 +1055,35 @@ int main ( int argc, char * argv[] )
 
   clock_t start , end ;
 
+  start = clock() ;
+
   sprintf(buf, "./log/sparse_infer.log") ;
   if ( init(buf) < 0 ) return -1 ;
 
-  start = clock() ;
+  check_solver_id() ;
 
   read_trajectory_data() ;
 
   read_basis_functions() ;
 
-  // solve the parameters using the Fast Iterative Shrinkage-Thresholding Algorithm (FISTA)
-  FISTA_backtracking() ;
+  switch (solver_id) {
+    case 1 :
+      // solve the parameters using the Fast Iterative Shrinkage-Thresholding Algorithm (FISTA)
+    	FISTA_backtracking() ;
+	break; 
+    case 2 :
+      // solve the parameters using the Iterative Shrinkage-Thresholding Algorithm (ISTA)
+  	ISTA_backtracking() ;
+	break; 
+    case 3 :
+	/* 
+	 * Simple (and slow) gradient descent method. 
+	 *
+	 * Only when either epsL1_flag=1 or know_reactions_flag=1, i.e., the object function is smooth.
+	 *
+	 */
+	grad_descent_smooth() ;
+  }
 
   // when reaction types are known and a channel has only one reaction, then
   // the parameter can be computed directly
