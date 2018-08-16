@@ -25,19 +25,22 @@ If one wants to build a parallel code, one also needs
 
 2. Download the source code:
 
+```
 	git clone ht<span>tps://<span>github.com/zwpku/sparse-learning-CRN.git
+```
 
    The code should be avaiable in the directory ./sparse_learning_CRN
 
 3. Enter the directory ./sparse_learning_CRN/src 
 
+```
   	cd ./sparse_learning_CRN/src
+```
 
 4. Make sure paths of the directories containing the headers and library files are provided.  
 
 5. Compile:
 
+```
         make 
-
-## LICENSING
-
+```
