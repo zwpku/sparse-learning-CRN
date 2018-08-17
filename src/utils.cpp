@@ -406,7 +406,7 @@ double minus_log_likelihood_partial( int i0, vector<vector<double> > & coeff_vec
 	exit(1) ;
       } else 
 	local_s += -log(tmp_ai) ;
-    } else 
+    } else // in this case, ai can be negative or zero
       local_s += -logG(tmp_ai) ;
   }
 
@@ -420,7 +420,7 @@ double minus_log_likelihood_partial( int i0, vector<vector<double> > & coeff_vec
       // compute the second part of the log-likelihood function
       if (know_reactions_flag == 1)
       {
-	// again, check whether is negative
+	// in this case, check whether ai is negative
 	if ( (is_negative(tmp_ai)) && (mpi_rank == 0) )
 	{
 	  printf( "Error: ai is negative ! i=%d, idx=%d", i, idx ) ;
@@ -429,7 +429,7 @@ double minus_log_likelihood_partial( int i0, vector<vector<double> > & coeff_vec
 	  exit(1) ;
 	} else 
 	  local_s += waiting_time_vec[traj_idx][i] * tmp_ai ;
-      } else 
+      } else // in this case, ai is allowed to be negative 
 	local_s += waiting_time_vec[traj_idx][i] * G(tmp_ai) ;
     }
 
@@ -496,7 +496,7 @@ void grad_minus_log_likelihood_partial( int i0, vector<vector<double> > & coeff_
 	      fprintf( log_file, "Error: ai is nonpositive! i=%d, idx=%d", i, idx ) ;
 	      dump_info(idx, tmp_ai, traj_vec[traj_idx][i], coeff_vec ) ;
 	      exit(1) ;
-	    } else 
+	    } else //in this case, we have (ln(x))'=1/x
 	      local_s -= tmp / tmp_ai ;
 	  } else
 	    local_s -= tmp * d_logG(tmp_ai) ;
@@ -511,7 +511,7 @@ void grad_minus_log_likelihood_partial( int i0, vector<vector<double> > & coeff_
 
 	  if (know_reactions_flag == 1)
 	  {
-	    // check whether is negative
+	    // check whether is negative (it can be zero)
 	    if ( (is_negative(tmp_ai)) && (mpi_rank == 0) )
 	    {
 	      printf( "Error: ai is negative ! i=%d, idx=%d", i, idx ) ;
@@ -520,7 +520,7 @@ void grad_minus_log_likelihood_partial( int i0, vector<vector<double> > & coeff_
 	      exit(1) ;
 	    } else 
 	      local_s += tmp * waiting_time_vec[traj_idx][i] ;
-	  } else
+	  } else // in this case, ai can be negative
 	    local_s += tmp * dG(tmp_ai) * waiting_time_vec[traj_idx][i] ;
 	}
 
