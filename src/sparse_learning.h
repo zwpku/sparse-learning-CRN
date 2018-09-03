@@ -139,6 +139,10 @@ extern vector<vector<int> > channel_list, reactions_in_channel ;
 // index of channels for each reaction within trajectory data
 extern vector<vector<int> > channel_idx_in_traj ;
 
+extern vector<int> channel_to_learn_list ;
+
+extern int num_channel_to_learn ;
+
 // vector of trajectories 
 extern vector<vector<vector<int> > > traj_vec ;
 

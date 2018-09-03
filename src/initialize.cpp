@@ -155,7 +155,6 @@ int init(char * log_file_name )
     know_reactions_flag = 1 ;
     if (mpi_rank == 0)
     {
-      printf("Parameter know_reaction_flag is reset to 1\n");
       fprintf(log_file, "Parameter know_reaction_flag is reset to 1\n");
     }
   }

@@ -32,6 +32,10 @@ int total_unknown_omega_parameters ;
 
 vector<vector<double> > omega_vec, omega_weights ;
 
+vector<int> channel_to_learn_list ;
+
+int num_channel_to_learn ;
+
 int channel_num ;
 
 vector<vector<vector<int> > > traj_vec ;

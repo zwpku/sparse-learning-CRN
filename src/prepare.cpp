@@ -429,21 +429,29 @@ void write_basis_functions()
     out_file << endl ;
   }
   out_file << endl ;
+  out_file.close() ;
 
-  out_file << channel_num << endl ;
-
-  if (know_reactions_flag == 1) // (Task 1) if we know reaction structures
+  // write basis information of each channel 
+  for (int i = 0 ; i < channel_num ; i ++)
   {
-    // output number of basis functions for each channel i, in this case, the
-    // number of reactions in each channel 
-    for ( int i = 0 ; i < channel_num ; i ++ )
-      out_file << reactions_in_channel[i].size() << ' ' ;
-    out_file << endl ;
+    sprintf( buf, "./output/basis_of_channel_%d.txt", i) ;
+    printf("Basis info of channel %d is written to : %s\n", i, buf) ;
+    fprintf(log_file, "Basis info of channel %d is written to : %s\n", i, buf) ;
+    out_file.open(buf) ;
+    if ( ! out_file.is_open() )
+      {
+	printf("Error: can not open output file : %s. \n\n", buf) ;
+	fprintf(log_file, "Error: can not open output file : %s. \n\n", buf) ;
+	exit(1) ;
+      }
 
-    int ridx ;
-    // reaction indices for each channel 
-    for ( int i = 0 ; i < channel_num ; i ++ )
+    if (know_reactions_flag == 1) // (Task 1) if we know reaction structures
     {
+      // output number of basis functions for channel i, in this case, the
+      // number of reactions in the channel 
+      out_file << reactions_in_channel[i].size() << endl ;
+
+      int ridx ;
       for (int j = 0 ; j < reactions_in_channel[i].size() ; j ++)
       {
 	// get the index of reaction first
@@ -452,56 +460,59 @@ void write_basis_functions()
 	out_file << basis_idx_of_reactions[ridx] << ' ' ;
       }
       out_file << endl ;
-    }
 
-    // the sparsity weight of each parameter equals to 0
-    for ( int i = 0 ; i < channel_num ; i ++ )
-    {
+      // the sparsity weight of each parameter equals to 0
       for (int j = 0 ; j < reactions_in_channel[i].size() ; j ++)
 	out_file << 0.0 << ' ' ;
       out_file << endl ;
-    }
 
-    // initial value for each basis functions 
-    for ( int i = 0 ; i < channel_num ; i ++ )
-    {
+      // initial value for each basis functions 
       for (int j = 0 ; j < reactions_in_channel[i].size() ; j ++)
 	out_file << 1.0 << ' ' ;
       out_file << endl ;
-    }
-  } else  // (Task 2) unknown reaction types
-  {
-    // output number of basis functions for each channel i, each channel used
-    // all basis functions by default
-    for ( int i = 0 ; i < channel_num ; i ++ )
-      out_file << num_basis << ' ' ;
-    out_file << endl ;
-
-    // basis functions used for each channel 
-    for ( int i = 0 ; i < channel_num ; i ++ )
+    } else  // (Task 2) unknown reaction types
     {
+      // output number of basis functions for channel i, 
+      // all basis functions will be used by default
+      out_file << num_basis << ' ' << endl ;
+
       for (int j = 0 ; j < num_basis ; j ++)
 	out_file << j << ' ' ;
       out_file << endl ;
-    }
 
-    // output weight of each parameter 
-    for ( int i = 0 ; i < channel_num ; i ++ )
-    {
+      // output weight of each parameter 
       for (int j = 0 ; j < num_basis ; j ++)
 	out_file << 1.0 << ' ' ;
       out_file << endl ;
-    }
 
-    // initial value of parameters for each basis functions 
-    for ( int i = 0 ; i < channel_num ; i ++ )
-    {
+      // initial value of parameters for each basis functions 
       for (int j = 0 ; j < num_basis ; j ++)
 	out_file << 0.0 << ' ' ;
       out_file << endl ;
     }
+
+    out_file.close() ;
   }
 
+  /* 
+   * Only indices contained in the following file will be learned.
+   * By default, indices of all channels are included.
+   */
+  sprintf( buf, "./output/channels_to_learn.txt" ) ;
+  out_file.open(buf) ;
+  if ( ! out_file.is_open() )
+    {
+      printf("Error: can not open output file : %s. \n\n", buf) ;
+      fprintf(log_file, "Error: can not open output file : %s. \n\n", buf) ;
+      exit(1) ;
+    }
+
+  out_file << channel_num << endl ;
+
+  for (int i = 0 ; i < channel_num; i ++)
+    out_file << i << ' ';
+
+  out_file << endl ;
   out_file.close() ;
 }
 
