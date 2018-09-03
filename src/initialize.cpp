@@ -42,8 +42,8 @@ void read_reactions()
 
   if (mpi_rank == 0)
   {
-    printf("\nReading reaction information from the file: %s\n", buf) ;
-    fprintf(log_file, "\nReading reaction information from the file: %s\n", buf) ;
+    printf("Reading reaction information from the file: %s\n", buf) ;
+    fprintf(log_file, "Reading reaction information from the file: %s\n", buf) ;
   }
 
   // check whether the file is successfully open 
@@ -130,6 +130,12 @@ int init(char * log_file_name )
 
   init_rand_generator() ;
 
+  if (mpi_rank == 0)
+  {
+    printf("\n========================================================\n") ;
+    fprintf(log_file, "\n========================================================\n") ;
+  }
+
   // read parameters 
   if (read_config() < 0) return -1 ;
 
@@ -143,6 +149,17 @@ int init(char * log_file_name )
   }
   else local_traj_start_idx += N_traj % mpi_size ;
 
+  // for SSA, reactions information is need, therefore the input parameter is ignored
+  if ( (strcmp(log_file_name, "./log/ssa.log")==0) && (know_reactions_flag == 0) )
+  {
+    know_reactions_flag = 1 ;
+    if (mpi_rank == 0)
+    {
+      printf("Parameter know_reaction_flag is reset to 1\n");
+      fprintf(log_file, "Parameter know_reaction_flag is reset to 1\n");
+    }
+  }
+
   // if reaction types are known, then read reactions from file 
   if (know_reactions_flag == 1) read_reactions() ;
 
@@ -154,10 +171,12 @@ int init(char * log_file_name )
       fprintf( log_file, "\nNumber of reactions = %d,\tDim = %d\n", R, n) ;
     }
 
-    printf( "\nNumber of processors = %d\n\n", mpi_size ) ;
-    fprintf( log_file, "\nNumber of processors = %d\n\n", mpi_size ) ;
-  }
+    printf( "\nNumber of processors = %d\n", mpi_size ) ;
+    fprintf( log_file, "\nNumber of processors = %d\n", mpi_size ) ;
 
+    printf("========================================================\n\n") ;
+    fprintf(log_file, "========================================================\n\n") ;
+  }
 
   return 0 ;
 }

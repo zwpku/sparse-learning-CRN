@@ -6,7 +6,7 @@ Data-based sparsity learning of chemical reaction networks
 
 This package relies on the following external libraries.
    
-   1.	[libconfig](https://github.com/hyperrealm/libconfig).
+   1.	[libconfig](https://hyperrealm.github.io/libconfig).
    	This library is used to process the configuration file: [./working_dir/sparse_learning.cfg](./working_dir/sparse_learning.cfg).
 
    2.	[RANLIB.C](http://www.netlib.org/random/) (file: [ranlib.c.tar.gz](http://www.netlib.org/random/ranlib.c.tar.gz)).

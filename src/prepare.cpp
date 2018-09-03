@@ -245,8 +245,11 @@ void process_data()
   // determine channels from trajectory data
   find_channels_in_traj(traj_vec) ;
 
-  printf("\nIn total:\n   %d reactions,\t%d reaction channels\n\n", tot_num_reaction_in_traj, channel_num) ;
-  fprintf(log_file, "\nIn total:\n   %d reactions,\t%d reaction channels\n\n", tot_num_reaction_in_traj, channel_num) ;
+  printf("\n\n========================================================\n") ;
+  fprintf(log_file, "\n\n========================================================\n") ;
+
+  printf("In total:\n   %d reactions,\t%d reaction channels\n\n", tot_num_reaction_in_traj, channel_num) ;
+  fprintf(log_file, "In total:\n   %d reactions,\t%d reaction channels\n\n", tot_num_reaction_in_traj, channel_num) ;
 
   for (int i =0 ; i < channel_num ; i ++)
   {
@@ -268,6 +271,9 @@ void process_data()
     printf("Occurrence : %d\n", Mi_in_all_traj[i]) ;
     fprintf(log_file, "Occurrence : %d\n", Mi_in_all_traj[i]) ;
   }
+
+  printf("========================================================\n\n") ;
+  fprintf(log_file, "========================================================\n\n") ;
 }
 
 /* 

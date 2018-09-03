@@ -4,6 +4,7 @@
 #include <time.h>
 #include <math.h>
 #include <string>
+#include <string.h>
 #include <fstream>
 #include <sstream>
 #include <iostream>

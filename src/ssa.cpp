@@ -73,18 +73,6 @@ int main ( int argc, char * argv[] )
   sprintf(buf, "./log/ssa.log") ;
   if (init(buf) < 0) return -1 ;
 
-  // for SSA, reactions information is need, therefore the input parameter is ignored
-  if (know_reactions_flag == 0) 
-  {
-    know_reactions_flag = 1;
-
-    if (mpi_rank == 0)
-    {
-      printf("Variable know_reaction_flag is reset to 1\n");
-      fprintf(log_file, "Variable know_reaction_flag is reset to 1\n");
-    }
-  }
-
   if (mpi_rank == 0)
   {
     // make sure the directory is ready

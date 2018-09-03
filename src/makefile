@@ -3,7 +3,7 @@
 # If USE_MPI=0, build a sequential code ;  
 # Otherwise, build a parallel code using MPI
 #
-USE_MPI = 0
+USE_MPI = 1
 
 ifeq ($(USE_MPI), 0) 
   CFLAGS=-g -O2 -DDEBUG 
