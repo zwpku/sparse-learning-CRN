@@ -328,21 +328,26 @@ void read_basis_functions()
     printf("Reading basis info from the file: ./output/basis_funct_info.txt\n" ) ;
     fprintf(log_file, "Reading basis info from the file: ./output/basis_funct_info.txt\n" ) ;
     printf("\nLoaded basis functions : %d\n", num_basis) ;
-    //  read basis indices for each channel
-    printf("Reading basis functions for each channel...\n") ;
-
     fprintf(log_file, "\nLoaded basis functions : %d\n", num_basis) ;
-    fprintf(log_file, "Reading basis functions for each channel...\n") ;
   }
 
   channel_to_learn_list.resize(channel_num, 0) ;
 
+  // read indices of channels that will be learned
   sprintf( buf, "./output/channels_to_learn.txt" ) ;
   in_file.open(buf) ;
   in_file >> num_tmp ; 
   for (int i = 0 ; i < num_tmp ; i ++)
   {
     in_file >> itmp ;
+
+    if ( (itmp < 0) || (itmp >= channel_num) )
+      {
+	printf("Error: channel index out of the range [0, %d]: %d.\n\nCheck the file:\t%s!\n\n", channel_num, itmp, buf) ;
+	fprintf(log_file, "Error: channel index out of the range [0, %d]: %d.\n\nCheck the file:\t%s!\n\n", channel_num, itmp, buf) ;
+	exit(1) ;
+      }
+
     channel_to_learn_list[itmp] = 1;
   }
   in_file.close() ;
@@ -354,6 +359,7 @@ void read_basis_functions()
   total_unknown_omega_parameters = 0 ;
 
   num_channel_to_learn = 0 ;
+
   // read basis functions for channels that will be learned
   for ( int i = 0 ; i < channel_num ; i ++ )
     if (channel_to_learn_list[i] == 1)
@@ -406,6 +412,7 @@ void read_basis_functions()
 	    omega_vec[i][j] = 1.0 ;
 	  }
       }
+    in_file.close() ;
   } 
 
   if (mpi_rank == 0)
@@ -418,6 +425,7 @@ void read_basis_functions()
     printf("========================================================\n\n") ;
     fprintf(log_file, "========================================================\n\n") ;
   }
+
 }
 
 /*
@@ -443,7 +451,7 @@ void ISTA_backtracking()
 
   // used in ISTA 
   vector<vector<double> > vec_tmp ;
-  double L0, eta, Lbar ;
+  double L0, eta, Lbar, max_Lbar ;
   double fval_old, fval_new ;
 
   omega_grad_vec.resize( channel_num ) ;
@@ -464,7 +472,7 @@ void ISTA_backtracking()
    * 	ln L(w) = \sum_{i=1}^K ln L_i(w_i), 
    * i.e., unknown parameters belonging to different reaction channels are decoupled.
    *
-   * Therefore, we solve the unknown coefficients for one channel after another.
+   * Therefore, we solve the unknown coefficients for each channel separately (only for those required)
    *
    */
   for (int i =0 ; i < channel_num; i ++)
@@ -490,6 +498,7 @@ void ISTA_backtracking()
 
     // initialize 
     iter_step = 0 ;
+    max_Lbar = 0 ;
 
     // update the parameters iteratively
     while ( iter_step < tot_step ) 
@@ -528,6 +537,8 @@ void ISTA_backtracking()
 	Lbar *= eta ;
       }
 
+      if (Lbar > max_Lbar) max_Lbar = Lbar ;
+
       // compute residual
       residual = difference_of_two_vectors(omega_vec[i], vec_tmp[i]) / basis_index_per_channel[i].size() ;
 
@@ -562,7 +573,10 @@ void ISTA_backtracking()
 	    out_file << omega_vec[i][j] << ' ' ;
 
 	  out_file << "\t" << std::setprecision(8) << fval_new + tmp << "\t" << residual << endl ;
+
+	  printf("\tmax-Lbar=%.3e\n", max_Lbar ) ;
 	}
+	max_Lbar = 0 ;
       }
     }
 
@@ -610,8 +624,8 @@ void ISTA_backtracking()
 
     if (mpi_rank == 0) 
     {
-      printf( "Final cost = %.6f\n\n", tmp ) ;
-      fprintf( log_file, "Final cost = %.6f\n\n", tmp ) ;
+      printf( "Final cost of all channels = %.6f\n\n", tmp ) ;
+      fprintf( log_file, "Final cost of all channels = %.6f\n\n", tmp ) ;
     }
   }
 }
@@ -635,7 +649,7 @@ void FISTA_backtracking()
 
   // used in FISTA 
   vector<vector<double> > vec_tmp, yk ;
-  double L0, t1, eta, Lbar, t_new, t_old ;
+  double L0, t1, eta, Lbar, t_new, t_old , max_Lbar ;
   double fval_old, fval_new ;
 
   omega_grad_vec.resize( channel_num ) ;
@@ -650,7 +664,7 @@ void FISTA_backtracking()
 
   // initialize constants in FISTA
   L0 = 1.0 ;
-  t1 = 1.0 ;
+  t1 = 7178.0 ;
   eta = 2.0 ;
 
   /* 
@@ -659,7 +673,7 @@ void FISTA_backtracking()
    * 	ln L(w) = \sum_{i=1}^K ln L_i(w_i), 
    * i.e., unknown parameters belonging to different reaction channels are decoupled.
    *
-   * Therefore, we solve the unknown coefficients for one channel after another.
+   * Therefore, we solve the unknown coefficients for each channel separately (only for those required)
    *
    */
   for (int i =0 ; i < channel_num; i ++)
@@ -686,6 +700,7 @@ void FISTA_backtracking()
     // initialize 
     t_old = t1 ;
     iter_step = 0 ;
+    max_Lbar = 0 ;
 
     for (int j = 0 ; j < basis_index_per_channel[i].size() ; j ++)
       yk[i][j] = omega_vec[i][j] ;
@@ -726,6 +741,8 @@ void FISTA_backtracking()
 	// if not, increase the constant Lbar 
 	Lbar *= eta ;
       }
+
+      if (Lbar > max_Lbar) max_Lbar = Lbar ;
 
       // update t_{k+1}
       t_new = (1 + sqrt(1 + 4 * t_old * t_old)) * 0.5 ;
@@ -771,7 +788,10 @@ void FISTA_backtracking()
 	    out_file << omega_vec[i][j] << ' ' ;
 
 	  out_file << "\t" << std::setprecision(8) << fval_new + tmp << "\t" << residual << endl ;
+
+	  printf("\tmax-Lbar=%.3e\n", max_Lbar ) ;
 	}
+	max_Lbar = 0 ;
       }
     }
 
@@ -820,8 +840,8 @@ void FISTA_backtracking()
 
     if (mpi_rank == 0) 
     {
-      printf( "Final cost = %.6f\n\n", tmp ) ;
-      fprintf( log_file, "Final cost = %.6f\n\n", tmp ) ;
+      printf( "Final cost of all channels = %.6f\n\n", tmp ) ;
+      fprintf( log_file, "Final cost of all channels = %.6f\n\n", tmp ) ;
     }
   }
 }
@@ -859,7 +879,7 @@ void grad_descent_smooth()
    * 	ln L(w) = \sum_{i=1}^K ln L_i(w_i), 
    * i.e., unknown parameters belonging to different reaction channels are decoupled.
    *
-   * Therefore, we solve the unknown coefficients for one channel after another.
+   * Therefore, we solve the unknown coefficients for each channel separately (only for those required).
    *
    */
   for (int i =0 ; i < channel_num; i ++)
@@ -980,8 +1000,8 @@ void grad_descent_smooth()
 
     if (mpi_rank == 0) 
     {
-      printf( "Final cost = %.6f\n\n", tmp ) ;
-      fprintf( log_file, "Final cost = %.6f\n\n", tmp ) ;
+      printf( "Final cost of all channels = %.6f\n\n", tmp ) ;
+      fprintf( log_file, "Final cost of all channels = %.6f\n\n", tmp ) ;
     }
   }
 }
@@ -1015,7 +1035,7 @@ void direct_compute_channel_with_single_reaction()
     }
 
   for ( int i = 0 ; i < channel_num ; i ++ )
-    if ( basis_index_per_channel[i].size()==1 )
+    if ( (basis_index_per_channel[i].size()==1) && (channel_to_learn_list[i] == 1) )
     {
       idx = basis_index_per_channel[i][0] ;
       local_s = 0 ;

@@ -130,8 +130,8 @@ void output_channel_info()
   char buf[100] ;
   sprintf( buf, "./output/channel_info.txt") ;
 
-  printf("\nInformation of channels are written into file: %s\n\n", buf) ;
-  fprintf(log_file, "\nInformation of channels are written into file: %s\n\n", buf) ;
+  printf("\nInformation of channels are written into file: %s\n", buf) ;
+  fprintf(log_file, "\nInformation of channels are written into file: %s\n", buf) ;
 
   out_file.open(buf) ;
 
@@ -253,8 +253,8 @@ void process_data()
 
   for (int i =0 ; i < channel_num ; i ++)
   {
-    printf("Channel %d: \tChange vector : (", i+1) ; 
-    fprintf(log_file, "Channel %d: \tChange vector : (", i+1) ; 
+    printf("Channel %d: \tChange vector : (", i) ; 
+    fprintf(log_file, "Channel %d: \tChange vector : (", i) ; 
     for (int j = 0 ; j < n ; j ++)
     {
       printf("%d", channel_list[i][j]) ;
@@ -271,6 +271,8 @@ void process_data()
     printf("Occurrence : %d\n", Mi_in_all_traj[i]) ;
     fprintf(log_file, "Occurrence : %d\n", Mi_in_all_traj[i]) ;
   }
+
+  output_channel_info() ;
 
   printf("========================================================\n\n") ;
   fprintf(log_file, "========================================================\n\n") ;
@@ -402,6 +404,9 @@ void write_basis_functions()
   for (int i = 0 ; i < channel_num ; i ++)
     omega_vec[i].resize( num_basis, 0.0 ) ;
 
+  printf("\n\n========================================================\n") ;
+  fprintf(log_file, "\n\n========================================================\n") ;
+
   // print basis functions into file
   printf("Number of basis functions = %d\n", num_basis) ;
   fprintf(log_file, "Number of basis functions = %d\n", num_basis) ;
@@ -410,8 +415,8 @@ void write_basis_functions()
   char buf[100] ;
   sprintf( buf, "./output/basis_funct_info.txt" ) ;
 
-  printf("Basis functions are written into the file: %s\n", buf) ;
-  fprintf(log_file, "Basis functions are written into the file: %s\n", buf) ;
+  printf("\nBasis functions are written into the file: %s\n", buf) ;
+  fprintf(log_file, "\nBasis functions are written into the file: %s\n", buf) ;
   out_file.open(buf) ;
   if ( ! out_file.is_open() )
     {
@@ -514,6 +519,13 @@ void write_basis_functions()
 
   out_file << endl ;
   out_file.close() ;
+
+  printf("\nIndices of channels which will be learned are written to: %s\n", buf);
+  fprintf(log_file, "\nIndices of channels which will be learned are written to: %s\n", buf);
+
+  printf("========================================================\n\n") ;
+  fprintf(log_file, "========================================================\n\n") ;
+
 }
 
 int main ( int argc, char * argv[] ) 
@@ -544,7 +556,6 @@ int main ( int argc, char * argv[] )
 
   process_data() ;
 
-  output_channel_info() ;
 
   write_basis_functions() ;
 

@@ -99,8 +99,10 @@ double l1_norm_partial( int i, vector<vector<double> > & coeff_vec, vector<vecto
 {
   double s;
   s = 0.0 ;
-    for (int j = 0 ; j < coeff_vec[i].size() ; j ++)
-      s += fabs(coeff_vec[i][j]) * weights[i][j] ;
+
+  for (int j = 0 ; j < coeff_vec[i].size() ; j ++)
+    s += fabs(coeff_vec[i][j]) * weights[i][j] ;
+
   return s ;
 }
 
@@ -315,7 +317,7 @@ double val_ai(int channel_idx, vector<int> &state, vector<vector<double> > & coe
   int idx ;
   double s ; 
   s = 0 ; 
-  // loop for each basis function used for this channel
+  // loop for each basis function used by this channel
   for ( int i = 0 ; i < coeff_vec[channel_idx].size() ; i ++ )
   {
     // index of basis function
@@ -407,7 +409,9 @@ double minus_log_likelihood_partial( int i0, vector<vector<double> > & coeff_vec
       } else 
 	local_s += -log(tmp_ai) ;
     } else // in this case, ai can be negative or zero
+    {
       local_s += -logG(tmp_ai) ;
+    }
   }
 
   // process trajectories that are distributed on the local processor
