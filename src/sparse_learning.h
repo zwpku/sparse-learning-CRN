@@ -151,11 +151,12 @@ extern FILE * log_file ;
 
 int dir_check( char dir_name[] ) ;
 int init(char * log_file_name) ;
+
 double ssa(double & t_now, vector<int> & c_state, vector<int> & next_state) ;
 
 double val_basis_funct(int basis_idx, vector<int> &state) ;
 void grad_minus_log_likelihood_partial(int i, vector<vector<double> > & coeff_vec, vector<vector<double> > & grad_coeff) ;
-double minus_log_likelihood_partial(int i, vector<vector<double> > & coeff_vec) ;
+double minus_log_likelihood_partial( int i, vector<vector<double> > & coeff_vec, double & min_ai, double & max_ai ) ;
 double val_basis_funct(int basis_idx, vector<int> &state) ;
 double difference_of_two_vectors( vector<double> & vec1, vector<double> & vec2 ) ;
 

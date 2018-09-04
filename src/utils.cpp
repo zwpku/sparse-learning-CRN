@@ -14,9 +14,11 @@
  */
 double G(double x)
 {
-  if (x >= g_cut * delta) return x;
-  if (x <= -g_cut * delta) return 0.0 ;
-  return delta * log( 1 + exp( x / delta ) ) ;
+  double tmp ;
+  tmp = x / delta ;
+  if (tmp >= g_cut) return x + delta * log1p( exp(-tmp) ) ;
+  if (tmp <= -g_cut) return delta * log1p( exp(tmp) ) ;
+  return delta * log1p( exp(tmp) ) ;
 }
 
 /* 
@@ -25,9 +27,11 @@ double G(double x)
  */
 double dG(double x)
 {
-  if (x >= g_cut * delta) return 1.0 ;
-  if (x <= -g_cut * delta) return 0.0 ;
-  return 1.0 / (1 + exp(-x / delta)) ;
+  double tmp ;
+  tmp = x / delta ;
+  if (tmp >= g_cut) return 1.0 ;
+  if (tmp <= -g_cut) return 0.0 ;
+  return 1.0 / (1 + exp(-tmp)) ;
 }
 
 /* 
@@ -38,10 +42,13 @@ double logG(double x)
   double tmp ;
   tmp = x / delta ;
   if (tmp > g_cut) 
-    return log(x) + exp(-tmp) / tmp ;
+    return log(x) + log1p( log1p(exp(-tmp)) / tmp ) ;
   if (tmp < -g_cut)
+  {
     return x / delta + log(delta) ;
-  return log(delta) + log( log(1 + exp(tmp)) ) ;
+  }
+  // function log1p(x) computes ln(1+x), and is more precise when |x| << 1.
+  return log( delta * log1p(exp(tmp)) ) ;
 }
 
 /* 
@@ -51,9 +58,9 @@ double d_logG(double x)
 {
   double tmp ;
   tmp = x / delta ;
-  if (tmp > g_cut) return 1.0 / x ;
+  if (tmp > g_cut) return 1.0 / ( (1 + exp(-tmp)) * (x + delta * log1p(exp(-tmp))) ) ;
   if (tmp < -g_cut) return 1.0 / ( (1.0 + exp(tmp)) * delta ) ;
-  return 1.0 / (delta * (1 + exp(-tmp)) * log(1 + exp(tmp))) ;
+  return 1.0 / ( delta * (1 + exp(-tmp)) * log1p(exp(tmp)) ) ;
 }
 
 /*
@@ -61,7 +68,7 @@ double d_logG(double x)
  */
 int is_zero(double x)
 {
-  if (fabs(x) < 1e-15) return 1 ;
+  if (fabs(x) < 1e-16) return 1 ;
   else return 0 ;
 }
 
@@ -70,7 +77,7 @@ int is_zero(double x)
  */
 int is_nonpositive(double x)
 {
-  if (x < 1e-15) return 1 ;
+  if (x < 1e-16) return 1 ;
   else return 0 ;
 }
 
@@ -79,7 +86,7 @@ int is_nonpositive(double x)
  */
 int is_negative(double x)
 {
-  if (x < -1e-12) return 1 ;
+  if (x < -1e-16) return 1 ;
   else return 0 ;
 }
 
@@ -374,12 +381,15 @@ void dump_info(int idx, double tmp_ai, vector<int> & c_state, vector<vector<doub
  *   of time)
  *
  */
-double minus_log_likelihood_partial( int i0, vector<vector<double> > & coeff_vec )
+double minus_log_likelihood_partial( int i0, vector<vector<double> > & coeff_vec, double & min_ai, double & max_ai )
 {
   double s, tmp_ai, ai, local_s ;
+  double local_min_ai , local_max_ai ;
   int idx ;
 
   local_s = 0 ;
+  local_min_ai = 1e8 ;
+  local_max_ai = -1e8 ;
   // process trajectories that are distributed on the local processor
   for (int traj_idx = 0; traj_idx < local_N_traj; traj_idx ++)
     for (int i = 0; i < num_state_in_traj[traj_idx]-1; i ++) // loop for each jump (or reaction)
@@ -391,6 +401,10 @@ double minus_log_likelihood_partial( int i0, vector<vector<double> > & coeff_vec
     if (idx != i0) continue ;
 
     tmp_ai = val_ai(idx, traj_vec[traj_idx][i], coeff_vec) ;
+
+    // update the recorded min and max ai, if neccessary
+    if (tmp_ai > local_max_ai) local_max_ai = tmp_ai ;
+    if (tmp_ai < local_min_ai) local_min_ai = tmp_ai ;
 
     // compute the first part of the log-likelihood function
     if (know_reactions_flag == 1) 
@@ -440,8 +454,12 @@ double minus_log_likelihood_partial( int i0, vector<vector<double> > & coeff_vec
 #if USE_MPI == 1
   // sum up all processors
   MPI_Allreduce(&local_s, &s, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD) ;
+  MPI_Allreduce(&local_min_ai, &min_ai, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD) ;
+  MPI_Allreduce(&local_max_ai, &max_ai, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD) ;
 #else
   s = local_s ;
+  min_ai = local_min_ai ;
+  max_ai = local_max_ai ;
 #endif
 
   return s / total_T ;

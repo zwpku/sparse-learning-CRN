@@ -454,6 +454,8 @@ void ISTA_backtracking()
   double L0, eta, Lbar, max_Lbar ;
   double fval_old, fval_new ;
 
+  double min_ai, max_ai ;
+
   omega_grad_vec.resize( channel_num ) ;
   vec_tmp.resize( channel_num ) ;
   for (int i = 0; i < channel_num; i ++)
@@ -510,7 +512,7 @@ void ISTA_backtracking()
       grad_minus_log_likelihood_partial(i, omega_vec, omega_grad_vec) ;
 
       // evaluate the function at the old point x_{k-1}
-      fval_old = minus_log_likelihood_partial(i, omega_vec) ; 
+      fval_old = minus_log_likelihood_partial( i, omega_vec, min_ai, max_ai ) ; 
 
       /* 
        * compute Lbar
@@ -523,7 +525,7 @@ void ISTA_backtracking()
 	p_L(i, Lbar, omega_vec, omega_grad_vec, vec_tmp) ;
 
 	// evaluate the function at new point
-	fval_new = minus_log_likelihood_partial(i, vec_tmp) ; 
+	fval_new = minus_log_likelihood_partial(i, vec_tmp, min_ai, max_ai ) ; 
 
 	// compute the function Q_L(x,y) ( without the term g(x)! ) 
 	tmp = fval_old ;
@@ -574,13 +576,14 @@ void ISTA_backtracking()
 
 	  out_file << "\t" << std::setprecision(8) << fval_new + tmp << "\t" << residual << endl ;
 
-	  printf("\tmax-Lbar=%.3e\n", max_Lbar ) ;
+	  printf("\tmax-Lbar=%.3e\t ai range=[%.2e,%.2e]\n", max_Lbar, min_ai, max_ai ) ;
+	  fprintf( log_file, "\tmax-Lbar=%.3e\t ai range=[%.2e,%.2e]\n", max_Lbar, min_ai, max_ai ) ;
 	}
 	max_Lbar = 0 ;
       }
     }
 
-    fval_new = minus_log_likelihood_partial(i, vec_tmp) ; 
+    fval_new = minus_log_likelihood_partial( i, vec_tmp, min_ai, max_ai ) ; 
     tmp = penalty_g_partial(i,omega_vec, omega_weights) ;
 
     if (mpi_rank == 0)
@@ -618,7 +621,7 @@ void ISTA_backtracking()
     tmp = 0 ;
     for (int i = 0 ; i < channel_num ; i ++)
     {
-      tmp += minus_log_likelihood_partial( i, omega_vec ) ;
+      tmp += minus_log_likelihood_partial( i, omega_vec, min_ai, max_ai ) ;
       tmp += penalty_g_partial( i, omega_vec, omega_weights ) ;
     }
 
@@ -651,6 +654,8 @@ void FISTA_backtracking()
   vector<vector<double> > vec_tmp, yk ;
   double L0, t1, eta, Lbar, t_new, t_old , max_Lbar ;
   double fval_old, fval_new ;
+
+  double min_ai, max_ai ;
 
   omega_grad_vec.resize( channel_num ) ;
   vec_tmp.resize( channel_num ) ;
@@ -715,7 +720,7 @@ void FISTA_backtracking()
       grad_minus_log_likelihood_partial(i, yk, omega_grad_vec) ;
 
       // evaluate the function at old point yk
-      fval_old = minus_log_likelihood_partial(i, yk) ; 
+      fval_old = minus_log_likelihood_partial( i, yk, min_ai, max_ai ) ; 
 
       /* 
        * compute Lbar
@@ -728,7 +733,7 @@ void FISTA_backtracking()
 	p_L(i, Lbar, yk, omega_grad_vec, vec_tmp) ;
 
 	// evaluate the function at new point
-	fval_new = minus_log_likelihood_partial(i, vec_tmp) ; 
+	fval_new = minus_log_likelihood_partial( i, vec_tmp, min_ai, max_ai ) ; 
 
 	// compute the function Q_L(x,y) ( without the term g(x)! ) 
 	tmp = fval_old ;
@@ -789,13 +794,14 @@ void FISTA_backtracking()
 
 	  out_file << "\t" << std::setprecision(8) << fval_new + tmp << "\t" << residual << endl ;
 
-	  printf("\tmax-Lbar=%.3e\n", max_Lbar ) ;
+	  printf("\tmax-Lbar=%.3e\t ai range=[%.2e,%.2e]\n", max_Lbar, min_ai, max_ai ) ;
+	  fprintf( log_file, "\tmax-Lbar=%.3e\t ai range=[%.2e,%.2e]\n", max_Lbar, min_ai, max_ai ) ;
 	}
 	max_Lbar = 0 ;
       }
     }
 
-    fval_new = minus_log_likelihood_partial(i, vec_tmp) ; 
+    fval_new = minus_log_likelihood_partial( i, vec_tmp, min_ai, max_ai ) ; 
     tmp = penalty_g_partial(i,omega_vec, omega_weights) ;
 
     if (mpi_rank == 0)
@@ -834,7 +840,7 @@ void FISTA_backtracking()
     tmp = 0 ;
     for (int i = 0 ; i < channel_num ; i ++)
     {
-      tmp += minus_log_likelihood_partial( i, omega_vec ) ;
+      tmp += minus_log_likelihood_partial( i, omega_vec, min_ai, max_ai ) ;
       tmp += penalty_g_partial( i, omega_vec, omega_weights ) ;
     }
 
@@ -864,6 +870,8 @@ void grad_descent_smooth()
 
   vector<vector<double> > vec_tmp ;
   double fval_old, fval_new ;
+
+  double min_ai, max_ai ;
 
   omega_grad_vec.resize( channel_num ) ;
   vec_tmp.resize( channel_num ) ;
@@ -940,6 +948,7 @@ void grad_descent_smooth()
 	  fprintf( log_file, "\nChannel idx = %d\t\tIteration step = %d\t \tResidual = %.6e ", i, iter_step, residual ) ;
 	}
 
+	fval_new = minus_log_likelihood_partial( i, vec_tmp, min_ai, max_ai ) ; 
 	tmp = penalty_g_partial(i,omega_vec, omega_weights) ;
 
 	if (mpi_rank == 0)
@@ -955,6 +964,9 @@ void grad_descent_smooth()
 	    out_file << omega_vec[i][j] << ' ' ;
 
 	  out_file << "\t" << std::setprecision(8) << fval_new + tmp << "\t" << residual << endl ;
+
+	  printf("\tai range=[%.2e,%.2e]\n", min_ai, max_ai ) ;
+	  fprintf( log_file, "\t ai range=[%.2e,%.2e]\n", min_ai, max_ai ) ;
 	}
       }
     }
@@ -994,7 +1006,7 @@ void grad_descent_smooth()
     tmp = 0 ;
     for (int i = 0 ; i < channel_num ; i ++)
     {
-      tmp += minus_log_likelihood_partial( i, omega_vec ) ;
+      tmp += minus_log_likelihood_partial( i, omega_vec, min_ai, max_ai ) ;
       tmp += penalty_g_partial( i, omega_vec, omega_weights ) ;
     }
 
