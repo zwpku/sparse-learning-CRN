@@ -8,7 +8,7 @@ double T , total_T ;
 vector<double> T_traj_vec ; 
 double regular_lambda ;
 
-double stop_eps , eps, delta, g_cut ;
+double vec_stop_tol, cost_stop_tol, eps, delta, g_cut ;
 int know_reactions_flag, xx_basis_flag ;
 vector<int> num_state_in_traj ;
 
@@ -31,6 +31,10 @@ vector<vector<int> > basis_vec, basis_index_per_channel ;
 int total_unknown_omega_parameters ;
 
 vector<vector<double> > omega_vec, omega_weights ;
+
+vector<double> min_cost ;
+
+vector<vector<double> > optimal_omega_vec ;
 
 vector<int> channel_to_learn_list ;
 

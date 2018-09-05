@@ -144,6 +144,11 @@ void read_channels_info_from_file()
       fprintf(log_file, "Error: can not open file : %s.\n\tCommand ./prepare should be run first! \n\n", buf) ;
       exit(1) ;
     }
+  if (mpi_rank == 0)
+  {
+    printf("Reading channel information from file : %s\n", buf) ;
+    fprintf(log_file, "Reading channel information from file : %s\n", buf) ;
+  }
 
   in_file >> channel_num >> itmp ;
   assert (itmp == n ) ;
@@ -236,8 +241,6 @@ void read_trajectory_data()
   {
     printf("\n========================================================\n") ;
     fprintf(log_file, "\n========================================================\n") ;
-    printf("Reading channel information from file : %s\n", buf) ;
-    fprintf(log_file, "Reading channel information from file : %s\n", buf) ;
   }
 
   read_channels_info_from_file() ;
@@ -444,7 +447,7 @@ void read_basis_functions()
 void ISTA_backtracking()
 {
   double residual, tmp ;
-  int iter_step ; 
+  int iter_step, converged_flag ; 
   vector<vector<double> > omega_grad_vec ;
   ofstream out_file ;
   char buf[100] ;
@@ -452,12 +455,13 @@ void ISTA_backtracking()
   // used in ISTA 
   vector<vector<double> > vec_tmp ;
   double L0, eta, Lbar, max_Lbar ;
-  double fval_old, fval_new ;
+  double fval_old, fval_new, g_cost, prev_cost ;
 
   double min_ai, max_ai ;
 
   omega_grad_vec.resize( channel_num ) ;
   vec_tmp.resize( channel_num ) ;
+
   for (int i = 0; i < channel_num; i ++)
   {
     vec_tmp[i].resize( basis_index_per_channel[i].size() ) ;
@@ -501,6 +505,8 @@ void ISTA_backtracking()
     // initialize 
     iter_step = 0 ;
     max_Lbar = 0 ;
+    converged_flag = 0 ;
+    prev_cost = 1e8 ;
 
     // update the parameters iteratively
     while ( iter_step < tot_step ) 
@@ -542,30 +548,35 @@ void ISTA_backtracking()
       if (Lbar > max_Lbar) max_Lbar = Lbar ;
 
       // compute residual
-      residual = difference_of_two_vectors(omega_vec[i], vec_tmp[i]) / basis_index_per_channel[i].size() ;
-
-      // check if the stop criteria is achieved
-      if (residual < stop_eps) break ;
+      residual = rel_error_of_two_vectors(omega_vec[i], vec_tmp[i]) ;
 
       // update x_k
       for (int j = 0 ; j < basis_index_per_channel[i].size() ; j ++)
 	omega_vec[i][j] = vec_tmp[i][j] ;
+
+      g_cost = penalty_g_partial(i, omega_vec, omega_weights) ;
+      /* 
+       * Check if stop criteria is achieved, based on :
+       *
+       * 1. the (normalized) l^1 norm of the difference of the coefficient vectors in the last two steps 
+       * 2. the difference of the cost in the last two steps
+       */
+      if ( (residual < vec_stop_tol) && (rel_error(fval_new + g_cost, prev_cost) < cost_stop_tol) ) 
+      {
+	converged_flag = 1 ;
+	break ;
+      }
 
       iter_step ++ ;
       if (iter_step % output_interval == 0) // print information 
       {
 	if (mpi_rank == 0)
 	{
-	  printf( "\nChannel idx = %d\t\tIteration step = %d\t \tResidual = %.6e ", i, iter_step, residual ) ;
-	  fprintf( log_file, "\nChannel idx = %d\t\tIteration step = %d\t \tResidual = %.6e ", i, iter_step, residual ) ;
-	}
-
-	tmp = penalty_g_partial(i,omega_vec, omega_weights) ;
-
-	if (mpi_rank == 0)
-	{
-	  printf( "\n\tminus-likelihood = %.8e\t\t penalty g_i(x) = %.5e\t\t Cost = %.8e\n", fval_new, tmp, fval_new + tmp ) ;
-	  fprintf( log_file, "\n\tminus-likelihood = %.8e\t\t penalty g_i(x)= %.4e\t\t Cost = %.8e\n", fval_new, tmp, fval_new + tmp ) ;
+	  printf( "Iteration step = %d\n\tminus-likelihood = %.8e\t penalty g_i(x) = %.5e\t Cost = %.8e\n", iter_step, fval_new, g_cost, fval_new + g_cost ) ;
+	  printf( "\tRel. residual of vec. = %.6e (%.2e)\n\tRel. diff. of cost = %.6e (%.2e)\n", residual, vec_stop_tol, 
+	      rel_error(fval_new + g_cost, prev_cost), cost_stop_tol) ;
+	  fprintf( log_file, "Iteration step = %d\n\tminus-likelihood = %.8e\t penalty g_i(x) = %.5e\t Cost = %.8e\n", iter_step, fval_new, g_cost, fval_new + g_cost ) ;
+	  fprintf( log_file, "\tRel. residual of vec. = %.6e (%.2e)\n\tRel. diff. of cost = %.6e (%.2e)\n", residual, vec_stop_tol, rel_error(fval_new + g_cost, prev_cost), cost_stop_tol) ;
 
 	  print_omega_coefficients(i, omega_vec) ;
 
@@ -576,20 +587,35 @@ void ISTA_backtracking()
 
 	  out_file << "\t" << std::setprecision(8) << fval_new + tmp << "\t" << residual << endl ;
 
-	  printf("\tmax-Lbar=%.3e\t ai range=[%.2e,%.2e]\n", max_Lbar, min_ai, max_ai ) ;
-	  fprintf( log_file, "\tmax-Lbar=%.3e\t ai range=[%.2e,%.2e]\n", max_Lbar, min_ai, max_ai ) ;
+	  printf("\tmax-Lbar=%.2e\t\t range of ai=[%.2e, %.2e]\n", max_Lbar, min_ai, max_ai ) ;
+	  fprintf( log_file, "\tmax-Lbar=%.2e\t\t range of ai=[%.2e, %.2e]\n", max_Lbar, min_ai, max_ai ) ;
 	}
 	max_Lbar = 0 ;
       }
-    }
 
-    fval_new = minus_log_likelihood_partial( i, vec_tmp, min_ai, max_ai ) ; 
-    tmp = penalty_g_partial(i,omega_vec, omega_weights) ;
+      prev_cost = fval_new + g_cost ; 
+    }
 
     if (mpi_rank == 0)
     {
-      printf("\nSolving coefficients for the reaction channel %d... finished.\n\nTotal iteration steps=%d,\t Final cost = %.8e,\t Final residual=%.4e\n\n", i, iter_step, fval_new + tmp, residual ) ;
-      fprintf(log_file, "\nSolving coefficients for the reaction channel %d... finished.\n\nTotal iteration steps=%d,\t Final cost = %.8e,\t Final residual=%.4e\n\n", i, iter_step, fval_new + tmp, residual ) ;
+      printf("\n========================================================\n") ;
+      fprintf(log_file, "\n========================================================\n") ;
+
+      printf("Solving coefficients for the reaction channel %d... finished.\n", i);
+      if (converged_flag == 1)
+	printf("\tConverged!\n");
+      else 
+	printf("\tNot converged!\n");
+
+      printf("\tTotal steps=%d,\t Final cost = %.8e\n\n", iter_step, prev_cost ) ;
+
+      fprintf(log_file, "Solving coefficients for the reaction channel %d... finished.\n", i);
+      if (converged_flag == 1)
+	fprintf(log_file, "\tConverged!\n");
+      else 
+	fprintf(log_file, "\tNot converged!\n");
+
+      fprintf(log_file, "\tTotal steps=%d,\t Final cost = %.8e\n\n", iter_step, prev_cost ) ;
 
       out_file.close() ;
 
@@ -610,8 +636,11 @@ void ISTA_backtracking()
 
       out_file.close() ;
 
-      printf("Results are written to: %s\n\n", buf) ;
-      fprintf(log_file, "Results are written to: %s\n\n", buf) ;
+      printf("Results are written to: %s\n", buf) ;
+      fprintf(log_file, "Results are written to: %s\n", buf) ;
+
+      printf("========================================================\n\n") ;
+      fprintf(log_file, "========================================================\n\n") ;
     }
   }
 
@@ -645,7 +674,7 @@ void ISTA_backtracking()
 void FISTA_backtracking()
 {
   double residual, tmp ;
-  int iter_step ; 
+  int iter_step , converged_flag ; 
   vector<vector<double> > omega_grad_vec ;
   ofstream out_file ;
   char buf[100] ;
@@ -653,23 +682,27 @@ void FISTA_backtracking()
   // used in FISTA 
   vector<vector<double> > vec_tmp, yk ;
   double L0, t1, eta, Lbar, t_new, t_old , max_Lbar ;
-  double fval_old, fval_new ;
+  double fval_old, fval_new, g_cost, prev_cost ;
 
-  double min_ai, max_ai ;
+  double min_ai, max_ai;
 
   omega_grad_vec.resize( channel_num ) ;
   vec_tmp.resize( channel_num ) ;
   yk.resize( channel_num ) ;
+  min_cost.resize( channel_num ) ;
+  optimal_omega_vec.resize( channel_num ) ;
+
   for (int i = 0; i < channel_num; i ++)
   {
     vec_tmp[i].resize( basis_index_per_channel[i].size() ) ;
     yk[i].resize( basis_index_per_channel[i].size() ) ;
     omega_grad_vec[i].resize( basis_index_per_channel[i].size() ) ;
+    optimal_omega_vec[i].resize( basis_index_per_channel[i].size() ) ;
   }
 
   // initialize constants in FISTA
   L0 = 1.0 ;
-  t1 = 7178.0 ;
+  t1 = 1.0 ;
   eta = 2.0 ;
 
   /* 
@@ -706,6 +739,9 @@ void FISTA_backtracking()
     t_old = t1 ;
     iter_step = 0 ;
     max_Lbar = 0 ;
+    prev_cost = 1e8 ;
+    min_cost[i] = 1e8 ;
+    converged_flag = 0 ;
 
     for (int j = 0 ; j < basis_index_per_channel[i].size() ; j ++)
       yk[i][j] = omega_vec[i][j] ;
@@ -757,33 +793,50 @@ void FISTA_backtracking()
 	yk[i][j] = vec_tmp[i][j] + (t_old - 1) / t_new * ( vec_tmp[i][j] - omega_vec[i][j] ) ;
 
       // compute residual
-      residual = difference_of_two_vectors(omega_vec[i], vec_tmp[i]) / basis_index_per_channel[i].size() ;
-
-      // check if the stop criteria is achieved
-      if (residual < stop_eps) break ;
+      residual = rel_error_of_two_vectors(omega_vec[i], vec_tmp[i]) ;
 
       // update x_k
       for (int j = 0 ; j < basis_index_per_channel[i].size() ; j ++)
 	omega_vec[i][j] = vec_tmp[i][j] ;
 
+      g_cost = penalty_g_partial(i, omega_vec, omega_weights) ;
+
+      if ( (iter_step == 0) || (fval_new + g_cost < min_cost[i]) )
+      {
+	min_cost[i] = fval_new + g_cost ;
+
+	for (int j = 0 ; j < basis_index_per_channel[i].size() ; j ++)
+	  optimal_omega_vec[i][j] = omega_vec[i][j] ;
+      }
+
+      /* 
+       * Check if stop criteria is achieved, based on :
+       *
+       * 1. the (normalized) l^1 norm of the difference of the coefficient vectors in the last two steps 
+       * 2. the difference of the cost in the last two steps
+       * 3. the difference of the current cost and the optimal cost so far
+       */
+      if ( (residual < vec_stop_tol) && (rel_error(fval_new + g_cost, prev_cost) < cost_stop_tol) && (rel_error(fval_new + g_cost, min_cost[i]) < cost_stop_tol) ) 
+      {
+	converged_flag = 1 ;
+	break ;
+      }
+
       // update t_k
       t_old = t_new ;
-
       iter_step ++ ;
+
       if (iter_step % output_interval == 0) // print information 
       {
 	if (mpi_rank == 0)
 	{
-	  printf( "\nChannel idx = %d\t\tIteration step = %d\t \tResidual = %.6e ", i, iter_step, residual ) ;
-	  fprintf( log_file, "\nChannel idx = %d\t\tIteration step = %d\t \tResidual = %.6e ", i, iter_step, residual ) ;
-	}
+	  printf( "Iteration step = %d\n\tminus-likelihood = %.8e\t penalty g_i(x) = %.5e\t Cost = %.8e\n", iter_step, fval_new, g_cost, fval_new + g_cost ) ;
+	  printf( "\tRel. residual of vec. = %.6e (%.2e)\n\tRel. diff. of cost = %.6e (%.2e)\n\tRel. diff. of cost (w.r.t. optimal) = %.6e\n", residual, vec_stop_tol, rel_error(fval_new + g_cost, prev_cost), cost_stop_tol, 
+	      rel_error(fval_new + g_cost, min_cost[i]) ) ;
 
-	tmp = penalty_g_partial(i,omega_vec, omega_weights) ;
-
-	if (mpi_rank == 0)
-	{
-	  printf( "\n\tminus-likelihood = %.8e\t\t penalty g_i(x) = %.5e\t\t Cost = %.8e\n", fval_new, tmp, fval_new + tmp ) ;
-	  fprintf( log_file, "\n\tminus-likelihood = %.8e\t\t penalty g_i(x)= %.4e\t\t Cost = %.8e\n", fval_new, tmp, fval_new + tmp ) ;
+	  fprintf( log_file, "Iteration step = %d\n\tminus-likelihood = %.8e\t penalty g_i(x) = %.5e\t Cost = %.8e\n", iter_step, fval_new, g_cost, fval_new + g_cost ) ;
+	  fprintf( log_file, "\tRel. residual of vec. = %.6e (%.2e)\n\tRel. diff. of cost = %.6e (%.2e)\n\tRel. diff. of cost (w.r.t. optimal) = %.6e\n", residual, vec_stop_tol, rel_error(fval_new + g_cost, prev_cost), cost_stop_tol, 
+	      rel_error(fval_new + g_cost, min_cost[i]) ) ;
 
 	  print_omega_coefficients(i, omega_vec) ;
 
@@ -792,22 +845,38 @@ void FISTA_backtracking()
 	  for (int j = 0 ; j < basis_index_per_channel[i].size() ; j ++)
 	    out_file << omega_vec[i][j] << ' ' ;
 
-	  out_file << "\t" << std::setprecision(8) << fval_new + tmp << "\t" << residual << endl ;
+	  out_file << "\t" << std::setprecision(8) << fval_new + g_cost << "\t" << residual << endl ;
 
-	  printf("\tmax-Lbar=%.3e\t ai range=[%.2e,%.2e]\n", max_Lbar, min_ai, max_ai ) ;
-	  fprintf( log_file, "\tmax-Lbar=%.3e\t ai range=[%.2e,%.2e]\n", max_Lbar, min_ai, max_ai ) ;
+	  printf("\tmax-Lbar=%.2e\ttk=%.1f\t\trange of ai =[%.2e, %.2e]\n", max_Lbar, t_new, min_ai, max_ai ) ;
+	  fprintf(log_file, "\tmax-Lbar=%.2e\ttk=%.1f\t\trange of ai =[%.2e, %.2e]\n", max_Lbar, t_new, min_ai, max_ai ) ;
 	}
 	max_Lbar = 0 ;
       }
-    }
 
-    fval_new = minus_log_likelihood_partial( i, vec_tmp, min_ai, max_ai ) ; 
-    tmp = penalty_g_partial(i,omega_vec, omega_weights) ;
+      // update
+      prev_cost = fval_new + g_cost ;
+    }
 
     if (mpi_rank == 0)
     {
-      printf("\nSolving coefficients for the reaction channel %d... finished.\n\nTotal iteration steps=%d,\t Final cost = %.8e,\t Final residual=%.4e\n\n", i, iter_step, fval_new + tmp, residual ) ;
-      fprintf(log_file, "\nSolving coefficients for the reaction channel %d... finished.\n\nTotal iteration steps=%d,\t Final cost = %.8e,\t Final residual=%.4e\n\n", i, iter_step, fval_new + tmp, residual ) ;
+      printf("\n========================================================\n") ;
+      fprintf(log_file, "\n========================================================\n") ;
+
+      printf("Solving coefficients for the reaction channel %d... finished.\n", i);
+      if (converged_flag == 1)
+	printf("\tConverged!\n");
+      else 
+	printf("\tNot converged!\n");
+
+      printf("\tTotal steps=%d,\t Final cost = %.8e,\t min_cost=%.8e\n\n", iter_step, prev_cost, min_cost[i] ) ;
+
+      fprintf(log_file, "Solving coefficients for the reaction channel %d... finished.\n", i);
+      if (converged_flag == 1)
+	fprintf(log_file, "\tConverged!\n");
+      else 
+	fprintf(log_file, "\tNot converged!\n");
+
+      fprintf(log_file, "\tTotal steps=%d,\t Final cost = %.8e,\t min_cost=%.8e\n\n", iter_step, prev_cost, min_cost[i] ) ;
 
       out_file.close() ;
 
@@ -829,8 +898,11 @@ void FISTA_backtracking()
 
       out_file.close() ;
 
-      printf("Results are written to: %s\n\n", buf) ;
-      fprintf(log_file, "Results are written to: %s\n\n", buf) ;
+      printf("Results are written to: %s\n", buf) ;
+      fprintf(log_file, "Results are written to: %s\n", buf) ;
+
+      printf("========================================================\n\n") ;
+      fprintf(log_file, "========================================================\n\n") ;
     }
   }
 
@@ -863,22 +935,26 @@ void FISTA_backtracking()
 void grad_descent_smooth() 
 {
   double residual, tmp ;
-  int iter_step ; 
+  int iter_step , converged_flag ; 
   vector<vector<double> > omega_grad_vec ;
   ofstream out_file ;
   char buf[100] ;
 
   vector<vector<double> > vec_tmp ;
-  double fval_old, fval_new ;
+  double fval_new, g_cost, prev_cost ;
 
   double min_ai, max_ai ;
 
   omega_grad_vec.resize( channel_num ) ;
   vec_tmp.resize( channel_num ) ;
+  min_cost.resize( channel_num ) ;
+  optimal_omega_vec.resize( channel_num ) ;
+
   for (int i = 0; i < channel_num; i ++)
   {
     vec_tmp[i].resize( basis_index_per_channel[i].size() ) ;
     omega_grad_vec[i].resize( basis_index_per_channel[i].size() ) ;
+    optimal_omega_vec[i].resize( basis_index_per_channel[i].size() ) ;
   }
 
   /* 
@@ -913,6 +989,9 @@ void grad_descent_smooth()
 
     // initialize 
     iter_step = 0 ;
+    converged_flag = 0 ;
+    min_cost[i] = 1e8 ;
+    prev_cost = 1e8 ;
 
     // update the parameters iteratively
     while ( iter_step < tot_step ) 
@@ -930,31 +1009,45 @@ void grad_descent_smooth()
       }
 
       // compute residual
-      residual = difference_of_two_vectors(omega_vec[i], vec_tmp[i]) / basis_index_per_channel[i].size() ;
-
-      // check if the stop criteria is achieved
-      if (residual < stop_eps) break ;
+      residual = rel_error_of_two_vectors(omega_vec[i], vec_tmp[i]) ;
 
       // update x_k
       for (int j = 0 ; j < basis_index_per_channel[i].size() ; j ++)
 	omega_vec[i][j] = vec_tmp[i][j] ;
+
+      fval_new = minus_log_likelihood_partial(i, omega_vec, min_ai, max_ai ) ; 
+      g_cost = penalty_g_partial(i, omega_vec, omega_weights) ;
+
+      if ( (iter_step == 0) || (fval_new + g_cost < min_cost[i]) )
+      {
+	min_cost[i] = fval_new + g_cost ;
+
+	for (int j = 0 ; j < basis_index_per_channel[i].size() ; j ++)
+	  optimal_omega_vec[i][j] = omega_vec[i][j] ;
+      }
+
+      /* 
+       * Check if stop criteria is achieved, based on :
+       *
+       * 1. the (normalized) l^1 norm of the difference of the coefficient vectors in the last two steps 
+       * 2. the difference of the cost in the last two steps
+       */
+      if ( (residual < vec_stop_tol) && (rel_error(fval_new + g_cost, prev_cost) < cost_stop_tol) ) 
+      {
+	converged_flag = 1 ;
+	break ;
+      }
 
       iter_step ++ ;
       if (iter_step % output_interval == 0) // print information 
       {
 	if (mpi_rank == 0)
 	{
-	  printf( "\nChannel idx = %d\t\tIteration step = %d\t \tResidual = %.6e ", i, iter_step, residual ) ;
-	  fprintf( log_file, "\nChannel idx = %d\t\tIteration step = %d\t \tResidual = %.6e ", i, iter_step, residual ) ;
-	}
+	  printf( "Iteration step = %d\n\tminus-likelihood = %.8e\t penalty g_i(x) = %.5e\t Cost = %.8e\n", iter_step, fval_new, g_cost, fval_new + g_cost ) ;
+	  printf( "\tRel. residual of vec. = %.6e (%.2e)\n\tRel. diff of cost = %.6e (%.2e)\n", residual, vec_stop_tol, rel_error(fval_new + g_cost, prev_cost), cost_stop_tol) ;
 
-	fval_new = minus_log_likelihood_partial( i, vec_tmp, min_ai, max_ai ) ; 
-	tmp = penalty_g_partial(i,omega_vec, omega_weights) ;
-
-	if (mpi_rank == 0)
-	{
-	  printf( "\n\tminus-likelihood = %.8e\t\t penalty g_i(x) = %.5e\t\t Cost = %.8e\n", fval_new, tmp, fval_new + tmp ) ;
-	  fprintf( log_file, "\n\tminus-likelihood = %.8e\t\t penalty g_i(x)= %.4e\t\t Cost = %.8e\n", fval_new, tmp, fval_new + tmp ) ;
+	  fprintf( log_file, "Iteration step = %d\n\tminus-likelihood = %.8e\t penalty g_i(x) = %.5e\t Cost = %.8e\n", iter_step, fval_new, g_cost, fval_new + g_cost ) ;
+	  fprintf( log_file, "\tRel. residual of vec. = %.6e (%.2e)\n\tRel. diff of cost = %.6e (%.2e)\n", residual, vec_stop_tol, rel_error(fval_new + g_cost, prev_cost), cost_stop_tol) ;
 
 	  print_omega_coefficients(i, omega_vec) ;
 
@@ -965,16 +1058,33 @@ void grad_descent_smooth()
 
 	  out_file << "\t" << std::setprecision(8) << fval_new + tmp << "\t" << residual << endl ;
 
-	  printf("\tai range=[%.2e,%.2e]\n", min_ai, max_ai ) ;
-	  fprintf( log_file, "\t ai range=[%.2e,%.2e]\n", min_ai, max_ai ) ;
+	  printf("\trange of ai=[%.2e,%.2e]\n", min_ai, max_ai ) ;
+	  fprintf( log_file, "\t range of ai=[%.2e,%.2e]\n", min_ai, max_ai ) ;
 	}
       }
+      prev_cost = fval_new + g_cost ;
     }
 
     if (mpi_rank == 0)
     {
-      printf("\nSolving coefficients for the reaction channel %d... finished.\n\nTotal iteration steps=%d,\t Final residual=%.4e\n\n", i, iter_step, residual ) ;
-      fprintf(log_file, "\nSolving coefficients for the reaction channel %d... finished.\n\nTotal iteration steps=%d,\t Final residual=%.4e\n\n", i, iter_step, residual ) ;
+      printf("\n========================================================\n") ;
+      fprintf(log_file, "\n========================================================\n") ;
+
+      printf("Solving coefficients for the reaction channel %d... finished.\n", i);
+      if (converged_flag == 1)
+	printf("\tConverged!\n");
+      else 
+	printf("\tNot converged!\n");
+
+      printf("\tTotal steps=%d,\t Final cost = %.8e,\t min_cost=%.8e\n\n", iter_step, prev_cost, min_cost[i] ) ;
+
+      fprintf(log_file, "Solving coefficients for the reaction channel %d... finished.\n", i);
+      if (converged_flag == 1)
+	fprintf(log_file, "\tConverged!\n");
+      else 
+	fprintf(log_file, "\tNot converged!\n");
+
+      fprintf(log_file, "\tTotal steps=%d,\t Final cost = %.8e,\t min_cost=%.8e\n\n", iter_step, prev_cost, min_cost[i] ) ;
 
       out_file.close() ;
 
@@ -995,8 +1105,11 @@ void grad_descent_smooth()
 
       out_file.close() ;
 
-      printf("Results are written to: %s\n\n", buf) ;
-      fprintf(log_file, "Results are written to: %s\n\n", buf) ;
+      printf("Results are written to: %s\n", buf) ;
+      fprintf(log_file, "Results are written to: %s\n", buf) ;
+
+      printf("========================================================\n\n") ;
+      fprintf(log_file, "========================================================\n\n") ;
     }
   }
 
@@ -1080,8 +1193,8 @@ void check_solver_id()
     {
       if (mpi_rank == 0)
       {
-	printf( "Warning: No such solver (solver_id=%d)!  Reset to solver_id=1 (FISTA method) \n\n", solver_id) ;
-	fprintf( log_file, "Warning: No such solver (solver_id=%d)!  Reset to solver_id=1 (FISTA method) \n\n", solver_id) ;
+	printf( "Warning: No such solver (solver_id=%d)!\t\t Reset to solver_id=1 (FISTA method) \n\n", solver_id) ;
+	fprintf( log_file, "Warning: No such solver (solver_id=%d)!\t\t Reset to solver_id=1 (FISTA method) \n\n", solver_id) ;
       }
       solver_id = 1 ;
     }
@@ -1092,8 +1205,8 @@ void check_solver_id()
     {
       if (mpi_rank == 0)
       {
-	printf( "Warning:  The gradient descent method (solver_id=3) can only be used when the object function is smooth, not for l^1 sparsity optimization. Reset solver_id=1 (FISTA method) \n\n") ;
-	fprintf( log_file, "Warning:  The gradient descent method (solver_id=3) can only be used when the object function is smooth, not for l^1 sparsity optimization. Reset solver_id=1 (FISTA method) \n\n") ;
+	printf( "Warning:  The gradient descent method (solver_id=3) can only be used when the object function is smooth, not for l^1 sparsity optimization.\t\tReset solver_id=1 (FISTA method) \n\n") ;
+	fprintf( log_file, "Warning:  The gradient descent method (solver_id=3) can only be used when the object function is smooth, not for l^1 sparsity optimization.\t\tReset solver_id=1 (FISTA method) \n\n") ;
       }
       solver_id = 1 ;
     }  

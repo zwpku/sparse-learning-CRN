@@ -82,14 +82,17 @@ extern double regular_lambda ;
 /* 
  * delta :      constant \epsilon used in the function G_\epsilon
  *
- * stop_eps :   iteration schemes stop when the difference of two steps is not
- * 	        larger than this value
+ * vec_stop_tol :   convergence check of iteration schemes. 
+ * 		    Difference of vectors in the last two steps should be smaller than this value
+ *
+ * cost_stop_tol :  convergence check of iteration schemes. 
+ * 		    Difference of costs should be smaller than this value
  *
  * g_cut :      function G(x) returns x when x/delta >= g_cut
  *
  * eps   : 	parameter used in the epsL1_norm (an approximation of l^1 norm)
  */
-extern double stop_eps , eps , delta, g_cut ;
+extern double vec_stop_tol, cost_stop_tol, eps, delta, g_cut ;
 
 // tot_step : 		total iteration steps 
 // output_interval : 	determine how often to print information during iteration 
@@ -121,6 +124,19 @@ extern int total_unknown_omega_parameters ;
 // unknown parameters and their sparsity weights  
 extern vector<vector<double> > omega_vec , omega_weights ;
 
+/* 
+ * The cost may not be monotonically descreasing during the iteration of FISTA algorithm.
+ * For this reason, 
+ * 1. min_cost : record the minimal (partial) cost of certain channel up to the current
+ * iteration step
+ * 2. optimal_omega_vec : the corresponding coefficient vector that acheives the minimal cost
+ *
+ */
+extern vector<double> min_cost ;
+
+extern vector<vector<double> > optimal_omega_vec ;
+
+
 // basis_vec : 			basis functions used for reconstruction
 // basis_index_per_channel :	indices of basis functions used for each channel 
 extern vector<vector<int> > basis_vec, basis_index_per_channel ;
@@ -139,8 +155,13 @@ extern vector<vector<int> > channel_list, reactions_in_channel ;
 // index of channels for each reaction within trajectory data
 extern vector<vector<int> > channel_idx_in_traj ;
 
+/* 
+ * Contains the indices of channels that will be learned.
+ * The indices are read from the file: ./output/channels_to_learn.txt
+ */
 extern vector<int> channel_to_learn_list ;
 
+// Number of indices that will be learned
 extern int num_channel_to_learn ;
 
 // vector of trajectories 
@@ -158,11 +179,13 @@ double val_basis_funct(int basis_idx, vector<int> &state) ;
 void grad_minus_log_likelihood_partial(int i, vector<vector<double> > & coeff_vec, vector<vector<double> > & grad_coeff) ;
 double minus_log_likelihood_partial( int i, vector<vector<double> > & coeff_vec, double & min_ai, double & max_ai ) ;
 double val_basis_funct(int basis_idx, vector<int> &state) ;
-double difference_of_two_vectors( vector<double> & vec1, vector<double> & vec2 ) ;
+double rel_error_of_two_vectors( vector<double> & vec1, vector<double> & vec2 ) ;
 
 void print_omega_coefficients( int i, vector<vector<double> > & coeff_vec ) ;
 
 void p_L(int i, double L, vector<vector<double> > & yk, vector<vector<double> > & grad_f, vector<vector<double> > & vec_tmp) ;
 double penalty_g_partial(int i, vector<vector<double> > & omega_vec, vector<vector<double> > & omega_weights) ;
-int is_nonpositive(double x) ;
 
+int is_nonpositive(double x) ;
+int is_zero(double x) ;
+double rel_error(double , double) ;

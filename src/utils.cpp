@@ -11,6 +11,8 @@
  *
  * g_cut:   	parameter used to avoid numerical error when x is too large or
  * 		too small.
+ * function log1p(x) is used to calculate log(1+x). It is more accurate when |x| << 1.
+ *
  */
 double G(double x)
 {
@@ -30,8 +32,8 @@ double dG(double x)
   double tmp ;
   tmp = x / delta ;
   if (tmp >= g_cut) return 1.0 ;
-  if (tmp <= -g_cut) return 0.0 ;
-  return 1.0 / (1 + exp(-tmp)) ;
+  if (tmp <= -g_cut) return exp(tmp) ;
+  return 1.0 / (1.0 + exp(-tmp)) ;
 }
 
 /* 
@@ -41,14 +43,11 @@ double logG(double x)
 {
   double tmp ;
   tmp = x / delta ;
+
   if (tmp > g_cut) 
     return log(x) + log1p( log1p(exp(-tmp)) / tmp ) ;
-  if (tmp < -g_cut)
-  {
-    return x / delta + log(delta) ;
-  }
-  // function log1p(x) computes ln(1+x), and is more precise when |x| << 1.
-  return log( delta * log1p(exp(tmp)) ) ;
+  else // function log1p(x) computes ln(1+x), and is more precise when |x| << 1.
+    return log( log1p(exp(tmp)) ) + log(delta) ;
 }
 
 /* 
@@ -58,7 +57,7 @@ double d_logG(double x)
 {
   double tmp ;
   tmp = x / delta ;
-  if (tmp > g_cut) return 1.0 / ( (1 + exp(-tmp)) * (x + delta * log1p(exp(-tmp))) ) ;
+  if (tmp > g_cut) return 1.0 / ( (1.0 + exp(-tmp)) * (x + delta * log1p(exp(-tmp))) ) ;
   if (tmp < -g_cut) return 1.0 / ( (1.0 + exp(tmp)) * delta ) ;
   return 1.0 / ( delta * (1 + exp(-tmp)) * log1p(exp(tmp)) ) ;
 }
@@ -88,6 +87,22 @@ int is_negative(double x)
 {
   if (x < -1e-16) return 1 ;
   else return 0 ;
+}
+
+/*
+ * the relative error of x and y.
+ *
+ * if y is close to 0, then return 
+ *    fabs(x-y),   i.e., the absolute error
+ * else return
+ *    fabs((x-y)/y)
+ */ 
+double rel_error(double x, double y)
+{
+  if (is_zero(y)) 
+    return fabs(x-y) ;
+  else
+    return fabs(x/y-1) ;
 }
 
 /* 
@@ -578,8 +593,11 @@ void print_omega_coefficients( int i, vector<vector<double> > & coeff_vec )
 {
   printf("\tChannel %d (", i) ;
   for (int j = 0 ; j < channel_list[i].size() ; j ++)
-    cout << channel_list[i][j] << ' ';
-  cout << ") :\t";
+  {
+    cout << channel_list[i][j] ;
+    if (j < channel_list[i].size() - 1) cout << ' ' ;
+  }
+  cout << "):\n\t\t";
   for (int j = 0 ; j < coeff_vec[i].size() ; j ++)
   {
     cout << std::setprecision(8) << coeff_vec[i][j] << '\t' ;
@@ -709,16 +727,18 @@ double penalty_g_partial(int i, vector<vector<double> > & omega_vec, vector<vect
 }
 
 /*
- * compute the l^1 norm of the difference of two vectors
+ * compute the maximum of the relative error among each component of the vectors
  *
  */
-double difference_of_two_vectors( vector<double> & vec1, vector<double> & vec2 )
+double rel_error_of_two_vectors( vector<double> & vec1, vector<double> & vec2 )
 {
-  double s;
+  double s, tmp ;
   s = 0 ;
   for (int i = 0 ; i < vec1.size() ; i ++)
-    s += fabs( vec1[i] - vec2[i] );
+  {
+    tmp = rel_error(vec1[i], vec2[i]) ; 
+    if (tmp > s) s = tmp ;
+  }
 
   return s ;
 }
-
