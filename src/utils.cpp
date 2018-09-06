@@ -99,6 +99,13 @@ int is_negative(double x)
  */ 
 double rel_error(double x, double y)
 {
+  double tmp ;
+
+  if (fabs(x) < fabs(y)) 
+  {
+    tmp = x ; x = y ; y = tmp ;
+  }
+
   if (is_zero(y)) 
     return fabs(x-y) ;
   else
@@ -591,7 +598,7 @@ double shrinkage(double x, double lambda)
  */
 void print_omega_coefficients( int i, vector<vector<double> > & coeff_vec )
 {
-  printf("\tChannel %d (", i) ;
+  printf("\tCoeff. of Channel %d (", i) ;
   for (int j = 0 ; j < channel_list[i].size() ; j ++)
   {
     cout << channel_list[i][j] ;

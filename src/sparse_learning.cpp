@@ -487,8 +487,8 @@ void ISTA_backtracking()
   {
     if (mpi_rank == 0)
     {
-      printf("Solving coefficients for the reaction channel %d...\n", i) ;
-      fprintf(log_file, "Solving coefficients for the reaction channel %d...\n", i) ;
+      printf("Solving coefficients for the reaction channel %d...\n\n", i) ;
+      fprintf(log_file, "Solving coefficients for the reaction channel %d...\n\n", i) ;
 
       sprintf( buf, "./output/iteration_omega_vec_for_channel_%d.txt", i) ;
 
@@ -569,8 +569,8 @@ void ISTA_backtracking()
        *
        */
 
-      update_tail_cost_vec(iter_step, fval_new + g_cost, tail_cost_max, tail_cost_min) ;
-      if (rel_error(tail_cost_max, tail_cost_min) < cost_stop_tol)
+      update_tail_cost_vec(iter_step, fval_new + g_cost, tail_cost_min, tail_cost_max) ;
+      if ((iter_step >= num_record_tail_cost) && (rel_error(tail_cost_max, tail_cost_min) < cost_stop_tol) )
       {
 	stop_flag = 1 ;
 	break ;
@@ -583,11 +583,11 @@ void ISTA_backtracking()
 	{
 	  printf( "Iteration step = %d\n\tminus-likelihood = %.8e\t penalty g_i(x) = %.5e\t Cost = %.8e\n", iter_step, fval_new, g_cost, fval_new + g_cost ) ;
 	  printf( "\tRel. residual of vec. = %.6e \n\tRel. diff. of cost = %.6e \n", residual, rel_error(fval_new + g_cost, prev_cost) ) ;
-	  printf("\tCosts in the last %d steps: [%.6e, %.6e],\tRel-diff. = %.4e (%.2e)\n", num_record_tail_cost,tail_cost_min, tail_cost_max, rel_error(tail_cost_max, tail_cost_min), cost_stop_tol) ;
+	  printf("\tCosts in the last %d steps: [%.6e, %.6e],\tRel-diff. = %.4e (%.2e)\n", min(iter_step, num_record_tail_cost), tail_cost_min, tail_cost_max, rel_error(tail_cost_max, tail_cost_min), cost_stop_tol) ;
 
 	  fprintf( log_file, "Iteration step = %d\n\tminus-likelihood = %.8e\t penalty g_i(x) = %.5e\t Cost = %.8e\n", iter_step, fval_new, g_cost, fval_new + g_cost ) ;
 	  fprintf( log_file, "\tRel. residual of vec. = %.6e \n\tRel. diff. of cost = %.6e\n", residual, rel_error(fval_new + g_cost, prev_cost) ) ;
-	  fprintf(log_file, "\tCosts in the last %d steps: [%.6e, %.6e],\tRel-diff. = %.4e (%.2e)\n", num_record_tail_cost,tail_cost_min, tail_cost_max, rel_error(tail_cost_max, tail_cost_min), cost_stop_tol) ;
+	  fprintf(log_file, "\tCosts in the last %d steps: [%.6e, %.6e],\tRel-diff. = %.4e (%.2e)\n", min(iter_step, num_record_tail_cost), tail_cost_min, tail_cost_max, rel_error(tail_cost_max, tail_cost_min), cost_stop_tol) ;
 
 	  print_omega_coefficients(i, omega_vec) ;
 
@@ -613,8 +613,8 @@ void ISTA_backtracking()
       printf("\n========================================================\n") ;
       fprintf(log_file, "\n========================================================\n") ;
 
-      printf("Solving coefficients for the reaction channel %d... finished.\n\tReason of termination:\t", i);
-      fprintf(log_file, "Solving coefficients for the reaction channel %d... finished.\n\tReason of termination:\t", i);
+      printf("Solving coefficients for the reaction channel %d... finished.\n\n\tReason of termination:\t", i);
+      fprintf(log_file, "Solving coefficients for the reaction channel %d... finished.\n\n\tReason of termination:\t", i);
 
       // print the reason of termination 
       switch (stop_flag) {
@@ -628,14 +628,14 @@ void ISTA_backtracking()
 	  break ;
       }
 
-      printf("\tTotal steps=%d,\t Final cost = %.8e\n\n", iter_step, prev_cost ) ;
-      fprintf(log_file, "\tTotal steps=%d,\t Final cost = %.8e\n\n", iter_step, prev_cost ) ;
+      printf("\n\tTotal steps=%d,\t Final cost = %.8e\n\n", iter_step, prev_cost ) ;
+      fprintf(log_file, "\t\nTotal steps=%d,\t Final cost = %.8e\n\n", iter_step, prev_cost ) ;
 
       printf( "\tRel. residual of vec. = %.6e \n", residual ) ;
-      printf("\tCosts in the last %d steps: [%.6e, %.6e],\tRel-diff. = %.4e (%.2e)\n", num_record_tail_cost, tail_cost_min, tail_cost_max, rel_error(tail_cost_max, tail_cost_min), cost_stop_tol) ;
+      printf("\n\tCosts in the last %d steps: [%.6e, %.6e],\tRel-diff. = %.4e (%.2e)\n", min(iter_step, num_record_tail_cost), tail_cost_min, tail_cost_max, rel_error(tail_cost_max, tail_cost_min), cost_stop_tol) ;
 
       fprintf( log_file, "\tRel. residual of vec. = %.6e \n", residual ) ;
-      fprintf( log_file, "\tCosts in the last %d steps: [%.6e, %.6e],\tRel-diff. = %.4e (%.2e)\n", num_record_tail_cost, tail_cost_min, tail_cost_max, rel_error(tail_cost_max, tail_cost_min), cost_stop_tol ) ;
+      fprintf( log_file, "\n\tCosts in the last %d steps: [%.6e, %.6e],\tRel-diff. = %.4e (%.2e)\n", num_record_tail_cost, tail_cost_min, tail_cost_max, rel_error(tail_cost_max, tail_cost_min), cost_stop_tol ) ;
 
       sprintf( buf, "./output/omega_vec_for_channel_%d.txt", i) ;
       out_file.open(buf) ;
@@ -654,11 +654,11 @@ void ISTA_backtracking()
 
       out_file.close() ;
 
-      printf("Results are written to: %s\n", buf) ;
-      fprintf(log_file, "Results are written to: %s\n", buf) ;
+      printf("\n\tResults are written to: %s\n", buf) ;
+      fprintf(log_file, "\n\tResults are written to: %s\n", buf) ;
 
-      printf( "Corresponding cost : %.6e\n",  fval_new + g_cost ) ;
-      fprintf( log_file, "Corresponding cost : %.6e\n",  fval_new + g_cost ) ;
+      printf( "\tCorresponding cost : %.6e\n\n",  fval_new + g_cost ) ;
+      fprintf( log_file, "\tCorresponding cost : %.6e\n\n",  fval_new + g_cost ) ;
 
       print_omega_coefficients(i, omega_vec) ;
 
@@ -744,8 +744,8 @@ void FISTA_backtracking()
   {
     if (mpi_rank == 0)
     {
-      printf("Solving coefficients for the reaction channel %d...\n", i) ;
-      fprintf(log_file, "Solving coefficients for the reaction channel %d...\n", i) ;
+      printf("Solving coefficients for the reaction channel %d...\n\n", i) ;
+      fprintf(log_file, "Solving coefficients for the reaction channel %d...\n\n", i) ;
 
       sprintf( buf, "./output/iteration_for_channel_%d.txt", i) ;
 
@@ -857,8 +857,8 @@ void FISTA_backtracking()
 	break ;
       }
 
-      update_tail_cost_vec(iter_step, fval_new + g_cost, tail_cost_max, tail_cost_min) ;
-      if (rel_error(tail_cost_max, tail_cost_min) < cost_stop_tol)
+      update_tail_cost_vec(iter_step, fval_new + g_cost, tail_cost_min, tail_cost_max) ;
+      if ((iter_step >= num_record_tail_cost) && (rel_error(tail_cost_max, tail_cost_min) < cost_stop_tol))
       {
 	stop_flag = 2 ;
 	break ;
@@ -873,14 +873,15 @@ void FISTA_backtracking()
 	if (mpi_rank == 0)
 	{
 	  printf( "Iteration step = %d\n\tminus-likelihood = %.8e\t penalty g_i(x) = %.5e\t Cost = %.8e\n", iter_step, fval_new, g_cost, fval_new + g_cost ) ;
-	  printf( "\tRel. residual of vec. = %.6e \n\tRel. diff. of cost = %.6e \n\tRel. diff. of cost (w.r.t. optimal) = %.6e\n", residual, rel_error(fval_new + g_cost, prev_cost),  
-	      rel_error(fval_new + g_cost, min_cost[i]) ) ;
-	  printf("\tCosts in the last %d steps: [%.6e, %.6e],\tRel-diff. = %.4e (%.2e)\n", num_record_tail_cost,tail_cost_min, tail_cost_max, rel_error(tail_cost_max, tail_cost_min), cost_stop_tol) ;
+	  printf( "\tRel. residual of vec. = %.6e \n\tRel. diff. of cost = %.6e\n", residual, rel_error(fval_new + g_cost, prev_cost) ) ;
+	  printf("\tRel. diff. of cost (w.r.t. optimal) = %.6e\n", rel_error(fval_new + g_cost, min_cost[i]) ) ;
+	  printf("\tCosts in the last %d steps: [%.6e, %.6e],\tRel-diff. = %.4e (%.2e)\n", min(iter_step,num_record_tail_cost), tail_cost_min, tail_cost_max, rel_error(tail_cost_max, tail_cost_min), cost_stop_tol) ;
 
 	  fprintf( log_file, "Iteration step = %d\n\tminus-likelihood = %.8e\t penalty g_i(x) = %.5e\t Cost = %.8e\n", iter_step, fval_new, g_cost, fval_new + g_cost ) ;
-	  fprintf( log_file, "\tRel. residual of vec. = %.6e \n\tRel. diff. of cost = %.6e \n\tRel. diff. of cost (w.r.t. optimal) = %.6e\n", residual, rel_error(fval_new + g_cost, prev_cost),  
-	      rel_error(fval_new + g_cost, min_cost[i]) ) ;
-	  fprintf( log_file, "\tCosts in the last %d steps: [%.6e, %.6e],\tRel-diff. = %.4e (%.2e)\n", num_record_tail_cost, tail_cost_min, tail_cost_max, rel_error(tail_cost_max, tail_cost_min), cost_stop_tol) ;
+	  fprintf( log_file, "\tRel. residual of vec. = %.6e \n\tRel. diff. of cost = %.6e\n", residual, rel_error(fval_new + g_cost, prev_cost) ) ;
+	  fprintf( log_file, "\tRel. diff. of cost (w.r.t. optimal) = %.6e\n", rel_error(fval_new + g_cost, min_cost[i]) ) ;
+
+	  fprintf( log_file, "\tCosts in the last %d steps: [%.6e, %.6e],\tRel-diff. = %.4e (%.2e)\n", min(iter_step, num_record_tail_cost), tail_cost_min, tail_cost_max, rel_error(tail_cost_max, tail_cost_min), cost_stop_tol) ;
 
 	  print_omega_coefficients(i, omega_vec) ;
 
@@ -908,8 +909,8 @@ void FISTA_backtracking()
       printf("\n========================================================\n") ;
       fprintf(log_file, "\n========================================================\n") ;
 
-      printf("Solving coefficients for the reaction channel %d... finished.\n\tReason of termination:\t", i);
-      fprintf(log_file, "Solving coefficients for the reaction channel %d... finished.\n\tReason of termination:\t", i);
+      printf("Solving coefficients for the reaction channel %d... finished.\n\n\tReason of termination:\t", i);
+      fprintf(log_file, "Solving coefficients for the reaction channel %d... finished.\n\n\tReason of termination:\t", i);
 
       // print the reason of termination 
       switch (stop_flag) {
@@ -922,19 +923,19 @@ void FISTA_backtracking()
 	  fprintf(log_file, "Minimal cost hasn't been updated after %d steps.\n", max_step_since_prev_min_cost) ;
 	  break ;
 	case 2 :
-	  printf("Costs in the last %d steps have litte change.\n", num_record_tail_cost) ;
-	  fprintf(log_file, "Costs in the last %d steps have litte change.\n", num_record_tail_cost) ;
+	  printf("Changes of the costs in the last %d steps are under threshold.\n", num_record_tail_cost) ;
+	  fprintf(log_file, "Changes of the costs in the last %d steps are under threshold.\n", num_record_tail_cost) ;
 	  break ;
       }
 
-      printf( "\tTotal steps=%d,\t Final cost = %.8e,\t min_cost=%.8e (at Step %d)\n\n", iter_step, prev_cost, min_cost[i], prev_min_step ) ;
-      fprintf( log_file, "\tTotal steps=%d,\t Final cost = %.8e,\t min_cost=%.8e (at Step %d)\n\n", iter_step, prev_cost, min_cost[i], prev_min_step ) ;
+      printf( "\n\tTotal steps=%d,\t Final cost = %.8e,\t min_cost=%.8e (at Step %d)\n\n", iter_step, prev_cost, min_cost[i], prev_min_step ) ;
+      fprintf( log_file, "\n\tTotal steps=%d,\t Final cost = %.8e,\t min_cost=%.8e (at Step %d)\n\n", iter_step, prev_cost, min_cost[i], prev_min_step ) ;
 
       printf( "\tRel. residual of vec. = %.6e \n\tRel. diff. of cost = %.6e\n\tRel. diff. of cost (w.r.t. optimal) = %.6e\n", residual, rel_error(fval_new + g_cost, prev_cost),  rel_error(fval_new + g_cost, min_cost[i]) ) ;
-      printf("\tCosts in the last %d steps: [%.6e, %.6e],\tRel-diff. = %.4e (%.2e)\n", num_record_tail_cost, tail_cost_min, tail_cost_max, rel_error(tail_cost_max, tail_cost_min), cost_stop_tol) ;
+      printf("\n\tCosts in the last %d steps: [%.6e, %.6e],\tRel-diff. = %.4e (%.2e)\n", num_record_tail_cost, tail_cost_min, tail_cost_max, rel_error(tail_cost_max, tail_cost_min), cost_stop_tol) ;
 
       fprintf( log_file, "\tRel. residual of vec. = %.6e \n\tRel. diff. of cost = %.6e\n\tRel. diff. of cost (w.r.t. optimal) = %.6e\n", residual, rel_error(fval_new + g_cost, prev_cost),  rel_error(fval_new + g_cost, min_cost[i]) ) ;
-      fprintf( log_file, "\tCosts in the last %d steps: [%.6e, %.6e],\tRel-diff. = %.4e (%.2e)\n", num_record_tail_cost, tail_cost_min, tail_cost_max, rel_error(tail_cost_max, tail_cost_min), cost_stop_tol) ;
+      fprintf( log_file, "\n\tCosts in the last %d steps: [%.6e, %.6e],\tRel-diff. = %.4e (%.2e)\n", num_record_tail_cost, tail_cost_min, tail_cost_max, rel_error(tail_cost_max, tail_cost_min), cost_stop_tol) ;
 
       // the coefficients having smallest cost will be taken as final result. 
       omega_vec[i] = optimal_omega_vec[i] ;
@@ -958,11 +959,11 @@ void FISTA_backtracking()
 
       out_file.close() ;
 
-      printf("Results are written to: %s\n", buf) ;
-      fprintf(log_file, "Results are written to: %s\n", buf) ;
+      printf("\n\tResults are written to: %s\n", buf) ;
+      fprintf(log_file, "\n\tResults are written to: %s\n", buf) ;
 
-      printf( "Corresponding cost : %.6e\n", min_cost[i] ) ;
-      fprintf( log_file, "Corresponding cost : %.6e\n", min_cost[i] ) ;
+      printf( "\tCorresponding cost : %.6e\n\n", min_cost[i] ) ;
+      fprintf( log_file, "\tCorresponding cost : %.6e\n\n", min_cost[i] ) ;
 
       print_omega_coefficients(i, omega_vec) ;
 
@@ -1114,8 +1115,8 @@ void grad_descent_smooth()
 	break ;
       }
 
-      update_tail_cost_vec(iter_step, fval_new + g_cost, tail_cost_max, tail_cost_min) ;
-      if ( rel_error(tail_cost_max, tail_cost_min) < cost_stop_tol )
+      update_tail_cost_vec(iter_step, fval_new + g_cost, tail_cost_min, tail_cost_max) ;
+      if ( (iter_step >= num_record_tail_cost) && (rel_error(tail_cost_max, tail_cost_min) < cost_stop_tol) )
       {
 	stop_flag = 2 ;
 	break ;
@@ -1128,12 +1129,12 @@ void grad_descent_smooth()
 	{
 	  printf( "Iteration step = %d\n\tminus-likelihood = %.8e\t penalty g_i(x) = %.5e\t Cost = %.8e\n", iter_step, fval_new, g_cost, fval_new + g_cost ) ;
 	  printf( "\tRel. residual of vec. = %.6e \n\tRel. diff. of cost = %.6e \n\tRel. diff. of cost (w.r.t. optimal) = %.6e\n", residual, rel_error(fval_new + g_cost, prev_cost),  rel_error(fval_new + g_cost, min_cost[i]) ) ;
-	  printf("\tCosts in the last %d steps: [%.6e, %.6e],\tRel-diff. = %.4e (%.2e)\n", num_record_tail_cost, tail_cost_min, tail_cost_max, rel_error(tail_cost_max, tail_cost_min), cost_stop_tol) ;
+	  printf("\tCosts in the last %d steps: [%.6e, %.6e],\tRel-diff. = %.4e (%.2e)\n", min(iter_step, num_record_tail_cost), tail_cost_min, tail_cost_max, rel_error(tail_cost_max, tail_cost_min), cost_stop_tol) ;
 
 	  fprintf( log_file, "Iteration step = %d\n\tminus-likelihood = %.8e\t penalty g_i(x) = %.5e\t Cost = %.8e\n", iter_step, fval_new, g_cost, fval_new + g_cost ) ;
 	  fprintf( log_file, "\tRel. residual of vec. = %.6e \n\tRel. diff. of cost = %.6e \n\tRel. diff. of cost (w.r.t. optimal) = %.6e\n", residual, rel_error(fval_new + g_cost, prev_cost),  
 	      rel_error(fval_new + g_cost, min_cost[i]) ) ;
-	  fprintf( log_file, "\tCosts in the last %d steps: [%.6e, %.6e],\tRel-diff. = %.4e (%.2e)\n", num_record_tail_cost, tail_cost_min, tail_cost_max, rel_error(tail_cost_max, tail_cost_min), cost_stop_tol) ;
+	  fprintf( log_file, "\tCosts in the last %d steps: [%.6e, %.6e],\tRel-diff. = %.4e (%.2e)\n", min(iter_step, num_record_tail_cost), tail_cost_min, tail_cost_max, rel_error(tail_cost_max, tail_cost_min), cost_stop_tol) ;
 
 	  print_omega_coefficients(i, omega_vec) ;
 
@@ -1158,8 +1159,8 @@ void grad_descent_smooth()
       printf("\n========================================================\n") ;
       fprintf(log_file, "\n========================================================\n") ;
 
-      printf("Solving coefficients for the reaction channel %d... finished.\n\tReason of termination:\t", i);
-      fprintf(log_file, "Solving coefficients for the reaction channel %d... finished.\n\tReason of termination:\t", i);
+      printf("Solving coefficients for the reaction channel %d... finished.\n\n\tReason of termination:\t", i);
+      fprintf(log_file, "Solving coefficients for the reaction channel %d... finished.\n\n\tReason of termination:\t", i);
 
       // print the reason of termination 
       switch (stop_flag) {
@@ -1172,18 +1173,18 @@ void grad_descent_smooth()
 	  fprintf(log_file, "Minimal cost hasn't been updated after %d steps.\n", max_step_since_prev_min_cost) ;
 	  break ;
 	case 2 :
-	  printf("Costs in the last %d steps have litte change.\n", num_record_tail_cost) ;
-	  fprintf(log_file, "Costs in the last %d steps have litte change.\n", num_record_tail_cost) ;
+	  printf("Changes of the costs in the last %d steps are under threshold.\n", num_record_tail_cost) ;
+	  fprintf(log_file, "Changes of the costs in the last %d steps are under threshold.\n", num_record_tail_cost) ;
 	  break ;
       }
 
-      printf( "\tTotal steps=%d,\t Final cost = %.8e,\t min_cost=%.8e (at Step %d)\n\n", iter_step, prev_cost, min_cost[i], prev_min_step ) ;
+      printf( "\n\tTotal steps=%d,\t Final cost = %.8e,\t min_cost=%.8e (at Step %d)\n\n", iter_step, prev_cost, min_cost[i], prev_min_step ) ;
       printf( "\tRel. residual of vec. = %.6e \n\tRel. diff. of cost = %.6e\n\tRel. diff. of cost (w.r.t. optimal) = %.6e\n", residual, rel_error(fval_new + g_cost, prev_cost),  rel_error(fval_new + g_cost, min_cost[i]) ) ;
-      printf("\tCosts in the last %d steps: [%.6e, %.6e],\tRel-diff. = %.4e (%.2e)\n", num_record_tail_cost, tail_cost_min, tail_cost_max, rel_error(tail_cost_max, tail_cost_min), cost_stop_tol) ;
+      printf("\tCosts in the last %d steps: [%.6e, %.6e],\tRel-diff. = %.4e (%.2e)\n", min(iter_step, num_record_tail_cost), tail_cost_min, tail_cost_max, rel_error(tail_cost_max, tail_cost_min), cost_stop_tol) ;
 
-      fprintf( log_file, "\tTotal steps=%d,\t Final cost = %.8e,\t min_cost=%.8e (at Step %d)\n\n", iter_step, prev_cost, min_cost[i], prev_min_step ) ;
+      fprintf( log_file, "\n\tTotal steps=%d,\t Final cost = %.8e,\t min_cost=%.8e (at Step %d)\n\n", iter_step, prev_cost, min_cost[i], prev_min_step ) ;
       fprintf( log_file, "\tRel. residual of vec. = %.6e \n\tRel. diff. of cost = %.6e\n\tRel. diff. of cost (w.r.t. optimal) = %.6e\n", residual, rel_error(fval_new + g_cost, prev_cost),  rel_error(fval_new + g_cost, min_cost[i]) ) ;
-      fprintf( log_file, "\tCosts in the last %d steps: [%.6e, %.6e],\tRel-diff. = %.4e (%.2e)\n", num_record_tail_cost, tail_cost_min, tail_cost_max, rel_error(tail_cost_max, tail_cost_min), cost_stop_tol) ;
+      fprintf( log_file, "\tCosts in the last %d steps: [%.6e, %.6e],\tRel-diff. = %.4e (%.2e)\n", min(iter_step, num_record_tail_cost), tail_cost_min, tail_cost_max, rel_error(tail_cost_max, tail_cost_min), cost_stop_tol) ;
 
       // the coefficients having smallest cost will be taken as final result. 
       omega_vec[i] = optimal_omega_vec[i] ;
@@ -1205,12 +1206,12 @@ void grad_descent_smooth()
 
       out_file.close() ;
 
-      printf("Results are written to: %s\n", buf) ;
-      fprintf(log_file, "Results are written to: %s\n", buf) ;
+      printf("\n\tResults are written to: %s\n", buf) ;
+      fprintf(log_file, "\n\tResults are written to: %s\n", buf) ;
 
 
-      printf( "Corresponding cost : %.6e\n", min_cost[i] ) ;
-      fprintf( log_file, "Corresponding cost : %.6e\n", min_cost[i] ) ;
+      printf( "\tCorresponding cost : %.6e\n", min_cost[i] ) ;
+      fprintf( log_file, "\tCorresponding cost : %.6e\n", min_cost[i] ) ;
 
       print_omega_coefficients(i, omega_vec) ;
 
