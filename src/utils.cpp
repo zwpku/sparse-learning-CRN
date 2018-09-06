@@ -742,3 +742,81 @@ double rel_error_of_two_vectors( vector<double> & vec1, vector<double> & vec2 )
 
   return s ;
 }
+
+void  update_tail_cost_vec(int istep, double cost, double & l_cost, double & m_cost) 
+{
+  vector<double> vec_tmp ;
+  vec_tmp.resize(3) ;
+
+  if (istep < num_record_tail_cost) // if there are not enough records, push the new cost in the 1st stack
+  {
+    vec_tmp[0] = cost ;
+    if (istep > 0)
+    {
+      // record the min and max 
+      vec_tmp[1] = min( cost, tail_cost_vec_1[istep-1][1] ) ;
+      vec_tmp[2] = max( cost, tail_cost_vec_1[istep-1][2] ) ;
+    } else
+    {
+      vec_tmp[1] = cost ;
+      vec_tmp[2] = cost ;
+    }
+    tail_cost_vec_1.push_back(vec_tmp) ;
+  } else // first pop the top one from the 2nd stack, then push the new one in the 1st stack
+  {
+    if (tail_cost_vec_2.size() == 0) // if the 2nd stack is already empty
+    {
+      assert(tail_cost_vec_1.size() == num_record_tail_cost) ;
+
+      tail_cost_vec_2.resize(num_record_tail_cost) ;
+
+      // move elements from 1st stack, and push to the 2nd stack.
+      for (int i =0 ; i < num_record_tail_cost; i ++)
+      {
+	tail_cost_vec_2[i].resize(3) ;
+	tail_cost_vec_2[i][0] = tail_cost_vec_1[num_record_tail_cost - 1 - i][0] ;
+	// update the min, max info
+	if (i > 0)
+	{
+	  tail_cost_vec_2[i][1] = min( tail_cost_vec_2[i][0], tail_cost_vec_2[i-1][1]) ;
+	  tail_cost_vec_2[i][2] = max( tail_cost_vec_2[i][0], tail_cost_vec_2[i-1][2]) ;
+	}
+	else 
+	{
+	  tail_cost_vec_2[i][1] = tail_cost_vec_2[i][0] ;
+	  tail_cost_vec_2[i][2] = tail_cost_vec_2[i][0] ;
+	}
+      }
+
+      // 1st stack becomes empty
+      tail_cost_vec_1.resize(0) ;
+    }
+    // pop one from 2nd stack
+    tail_cost_vec_2.pop_back() ;
+
+    // push the new one in 1st stack
+    vec_tmp[0] = cost ;
+    istep = tail_cost_vec_1.size() ;
+    if ( istep > 0)
+    {
+      // record the min and max 
+      vec_tmp[1] = min( cost, tail_cost_vec_1[istep-1][1] ) ;
+      vec_tmp[2] = max( cost, tail_cost_vec_1[istep-1][2] ) ;
+    } else
+    {
+      vec_tmp[1] = cost ;
+      vec_tmp[2] = cost ;
+    }
+    tail_cost_vec_1.push_back(vec_tmp) ;
+  } 
+
+  l_cost = vec_tmp[1] ;
+  m_cost = vec_tmp[2] ;
+
+  istep = tail_cost_vec_2.size() ;
+  if ( istep > 0)
+  {
+    l_cost = min( l_cost, tail_cost_vec_2[istep-1][1] );
+    m_cost = max( m_cost, tail_cost_vec_2[istep-1][2] );
+  }
+}

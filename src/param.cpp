@@ -8,13 +8,17 @@ double T , total_T ;
 vector<double> T_traj_vec ; 
 double regular_lambda ;
 
-double vec_stop_tol, cost_stop_tol, eps, delta, g_cut ;
+double cost_stop_tol, eps, delta, g_cut ;
 int know_reactions_flag, xx_basis_flag ;
 vector<int> num_state_in_traj ;
 
 int tot_num_reaction_in_traj ;
 
-int tot_step, output_interval ;
+int tot_step, output_interval, max_step_since_prev_min_cost ;
+
+int num_record_tail_cost ;
+
+vector<vector<double> > tail_cost_vec_1, tail_cost_vec_2 ;
 
 vector<vector<int> > Mi_in_traj ; 
 vector<int> init_state , reactant_num , Mi_in_all_traj ;

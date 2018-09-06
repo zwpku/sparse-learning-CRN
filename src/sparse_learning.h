@@ -80,10 +80,8 @@ extern vector<double> T_traj_vec;
 extern double regular_lambda ;
 
 /* 
- * delta :      constant \epsilon used in the function G_\epsilon
  *
- * vec_stop_tol :   convergence check of iteration schemes. 
- * 		    Difference of vectors in the last two steps should be smaller than this value
+ * delta :      constant \epsilon used in the function G_\epsilon
  *
  * cost_stop_tol :  convergence check of iteration schemes. 
  * 		    Difference of costs should be smaller than this value
@@ -91,12 +89,32 @@ extern double regular_lambda ;
  * g_cut :      function G(x) returns x when x/delta >= g_cut
  *
  * eps   : 	parameter used in the epsL1_norm (an approximation of l^1 norm)
+ *
  */
-extern double vec_stop_tol, cost_stop_tol, eps, delta, g_cut ;
+extern double cost_stop_tol, eps, delta, g_cut ;
 
-// tot_step : 		total iteration steps 
-// output_interval : 	determine how often to print information during iteration 
-extern int tot_step, output_interval ;
+/* 
+ * tot_step : 		total iteration steps 
+ *
+ * output_interval : 	determine how often to print information during iteration 
+ *
+ * max_step_since_prev_min_cost : 
+ * 			iteration stops if no new minimal cost has been found
+ * 			after certain amount of steps since the previous minimal
+ */ 			
+extern int tot_step, output_interval, max_step_since_prev_min_cost ;
+
+/*
+ * num_record_tail_cost :   
+ * 		number of costs of the previous steps that will be record during iteration
+ */
+extern int num_record_tail_cost ;
+
+/*
+ * the costs of previous steps are stored in a FIFO queue structure, 
+ * It is implemented using the following two stacks
+ */
+extern vector<vector<double> > tail_cost_vec_1, tail_cost_vec_2 ;
 
 // maximal order of polynomial functions used as basis functions, in the
 // current implementation we use poly_order = 1 or 2.
@@ -189,3 +207,5 @@ double penalty_g_partial(int i, vector<vector<double> > & omega_vec, vector<vect
 int is_nonpositive(double x) ;
 int is_zero(double x) ;
 double rel_error(double , double) ;
+
+void update_tail_cost_vec(int, double , double &, double &) ;

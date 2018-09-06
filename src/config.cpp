@@ -74,13 +74,16 @@ int read_config()
   if ( read_value(cfg, string("eps"), eps) < 0 )
     return -1;
 
-  if ( read_value(cfg, string("vec_stop_tol"), vec_stop_tol) < 0 )
-    return -1;
-
   if ( read_value(cfg, string("cost_stop_tol"), cost_stop_tol) < 0 )
     return -1;
 
   if ( read_value(cfg, string("tot_step"), tot_step) < 0 )
+    return -1;
+
+  if ( read_value(cfg, string("max_step_since_prev_min_cost"), max_step_since_prev_min_cost) < 0 )
+    return -1;
+
+  if ( read_value(cfg, string("num_record_tail_cost"), num_record_tail_cost) < 0 )
     return -1;
 
   if ( read_value(cfg, string("delta"), delta) < 0 )
@@ -101,9 +104,6 @@ int read_config()
    * See the document in the file prepare.cpp for details.
    */
   if (know_reactions_flag == 1) xx_basis_flag = 0 ;
-
-  if ( is_zero(vec_stop_tol) ) vec_stop_tol = 1e-4;
-  if ( is_zero(cost_stop_tol) ) cost_stop_tol = 1e-4;
 
   return 0 ;
 }
