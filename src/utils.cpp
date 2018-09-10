@@ -20,6 +20,7 @@ double G(double x)
   tmp = x / delta ;
   if (tmp >= g_cut) return x + delta * log1p( exp(-tmp) ) ;
   if (tmp <= -g_cut) return delta * log1p( exp(tmp) ) ;
+
   return delta * log1p( exp(tmp) ) ;
 }
 
@@ -42,12 +43,20 @@ double dG(double x)
 double logG(double x)
 {
   double tmp ;
+  double ret ;
   tmp = x / delta ;
 
   if (tmp > g_cut) 
-    return log(x) + log1p( log1p(exp(-tmp)) / tmp ) ;
+    ret = log(x) + log1p( log1p(exp(-tmp)) / tmp ) ;
   else // function log1p(x) computes ln(1+x), and is more precise when |x| << 1.
-    return log( log1p(exp(tmp)) ) + log(delta) ;
+    ret = log( log1p(exp(tmp)) ) + log(delta) ;
+ 
+  // when tmp is very small, this will happen, because log1p(exp(tmp))=0...
+  if (isinf(ret))
+  {
+    ret = tmp + log(delta) ;
+  }
+  return ret ;
 }
 
 /* 
@@ -449,6 +458,7 @@ double minus_log_likelihood_partial( int i0, vector<vector<double> > & coeff_vec
       local_s += -logG(tmp_ai) ;
     }
   }
+
 
   // process trajectories that are distributed on the local processor
   for (int traj_idx = 0; traj_idx < local_N_traj; traj_idx ++)
