@@ -486,8 +486,8 @@ double minus_log_likelihood_partial( int i0, vector<vector<double> > & coeff_vec
 #if USE_MPI == 1
   // sum up all processors
   MPI_Allreduce(&local_s, &s, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD) ;
-  MPI_Allreduce(&local_min_ai, &min_ai, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD) ;
-  MPI_Allreduce(&local_max_ai, &max_ai, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD) ;
+  MPI_Allreduce(&local_min_ai, &min_ai, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD) ;
+  MPI_Allreduce(&local_max_ai, &max_ai, 1, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD) ;
 #else
   s = local_s ;
   min_ai = local_min_ai ;
