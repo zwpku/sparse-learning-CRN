@@ -31,7 +31,7 @@ endif
 #
 # 	3. the directory containing mpi.h, required by MPICH.
 #
-LOCAL_DIR=/home/mi/weizhang/local/
+LOCAL_DIR=/home/weizhang/local/
 INCLUDES=-I$(LOCAL_DIR)/include 
 
 LDFLAGS=-Wl,-rpath,$(LOCAL_DIR)/lib -L$(LOCAL_DIR)/lib -lm -lpthread -lconfig++ -lranlib 

@@ -46,10 +46,10 @@ void gen_data()
 	// no more reactions 
 	if (tau + t_now > T) tau = T - t_now ;
 
-	out_file << t_now << ' ' ;
+	out_file << std::setprecision(12) << t_now << ' ' ;
 	for (int i = 0 ; i < n ; i ++)
 	  out_file << c_state[i] << ' ' ;
-	out_file << tau << endl ;
+	out_file << std::setprecision(12) << tau << endl ;
 
 	// update state and time
 	c_state = next_state ; 

@@ -617,7 +617,7 @@ void print_omega_coefficients( int i, vector<vector<double> > & coeff_vec )
   cout << "):\n\t\t";
   for (int j = 0 ; j < coeff_vec[i].size() ; j ++)
   {
-    cout << std::setprecision(8) << coeff_vec[i][j] << '\t' ;
+    printf( "%.16e\t", coeff_vec[i][j] ) ;
   }
   cout << endl ;
 }

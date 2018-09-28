@@ -273,8 +273,8 @@ void read_trajectory_data()
       fprintf(log_file, "Occurrence : %d\n", Mi_in_all_traj[i]) ;
     }
 
-    printf( "\nTotal length of time of %d trajectories : %.4f\n", N_traj, total_T ) ;
-    fprintf( log_file, "\nTotal length of time of %d trajectories : %.4f\n", N_traj, total_T ) ;
+    printf( "\nTotal length of time of %d trajectories : %.6f\n", N_traj, total_T ) ;
+    fprintf( log_file, "\nTotal length of time of %d trajectories : %.6f\n", N_traj, total_T ) ;
 
     printf("========================================================\n\n") ;
     fprintf(log_file, "========================================================\n\n") ;
@@ -505,9 +505,9 @@ void ISTA_backtracking()
 
     // initialize 
     iter_step = 0 ;
-    max_Lbar = 0 ;
     prev_cost = 1e8 ;
     stop_flag = 0 ;
+    max_Lbar = 0 ;
 
     // costs of previous steps are recorded in these two stacks
     tail_cost_vec_1.resize(0);
@@ -551,7 +551,7 @@ void ISTA_backtracking()
       }
 
       if (Lbar > max_Lbar) max_Lbar = Lbar ;
-
+      
       // compute residual
       residual = rel_error_of_two_vectors(omega_vec[i], vec_tmp[i]) ;
 
@@ -601,7 +601,7 @@ void ISTA_backtracking()
 	  printf("\tmax-Lbar=%.2e\t\t range of ai=[%.2e, %.2e]\n", max_Lbar, min_ai, max_ai ) ;
 	  fprintf( log_file, "\tmax-Lbar=%.2e\t\t range of ai=[%.2e, %.2e]\n", max_Lbar, min_ai, max_ai ) ;
 	}
-	max_Lbar = 0 ;
+        max_Lbar = 0 ;
       }
       prev_cost = fval_new + g_cost ; 
     }
@@ -704,7 +704,7 @@ void FISTA_backtracking()
 
   // used in FISTA 
   vector<vector<double> > vec_tmp, yk ;
-  double L0, t1, eta, Lbar, t_new, t_old , max_Lbar ;
+  double L0, t1, eta, Lbar, t_new, t_old ;
   double fval_old, fval_new, g_cost, prev_cost ;
 
   double tail_cost_max, tail_cost_min ;
@@ -762,8 +762,8 @@ void FISTA_backtracking()
 
     // initialize 
     t_old = t1 ;
+    Lbar = L0 ;
     iter_step = 0 ;
-    max_Lbar = 0 ;
     prev_cost = 1e8 ;
     min_cost[i] = 1e8 ;
     stop_flag = 0 ;
@@ -779,7 +779,6 @@ void FISTA_backtracking()
     while ( iter_step < tot_step ) 
     {
       residual = 0.0 ;
-      Lbar = L0 ;
 
       // compute the gradient of the log-likelihood functions
       grad_minus_log_likelihood_partial(i, yk, omega_grad_vec) ;
@@ -806,13 +805,10 @@ void FISTA_backtracking()
 	  tmp += (vec_tmp[i][j] - yk[i][j]) * omega_grad_vec[i][j] + Lbar * 0.5 * (vec_tmp[i][j] - yk[i][j]) * (vec_tmp[i][j] - yk[i][j]) ;
 
 	// check whether the condition is satisfied
-	if (fval_new <= tmp) break ;
-
+	if (fval_new <= tmp) break ; 
 	// if not, increase the constant Lbar 
 	Lbar *= eta ;
       }
-
-      if (Lbar > max_Lbar) max_Lbar = Lbar ;
 
       // update t_{k+1}
       t_new = (1 + sqrt(1 + 4 * t_old * t_old)) * 0.5 ;
@@ -892,10 +888,9 @@ void FISTA_backtracking()
 
 	  out_file << "\t" << std::setprecision(8) << fval_new + g_cost << "\t" << residual << endl ;
 
-	  printf("\tmax-Lbar=%.2e\ttk=%.1f\t\trange of ai =[%.2e, %.2e]\n", max_Lbar, t_new, min_ai, max_ai ) ;
-	  fprintf(log_file, "\tmax-Lbar=%.2e\ttk=%.1f\t\trange of ai =[%.2e, %.2e]\n", max_Lbar, t_new, min_ai, max_ai ) ;
+	  printf("\tLbar=%.2e\ttk=%.1f\t\trange of ai =[%.2e, %.2e]\n", Lbar, t_new, min_ai, max_ai ) ;
+	  fprintf(log_file, "\tLbar=%.2e\ttk=%.1f\t\trange of ai =[%.2e, %.2e]\n", Lbar, t_new, min_ai, max_ai ) ;
 	}
-	max_Lbar = 0 ;
       }
 
       // update
@@ -939,7 +934,6 @@ void FISTA_backtracking()
 
       // the coefficients having smallest cost will be taken as final result. 
       omega_vec[i] = optimal_omega_vec[i] ;
-
 
       sprintf( buf, "./output/omega_vec_for_channel_%d.txt", i) ;
 
