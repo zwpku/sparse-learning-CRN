@@ -517,6 +517,12 @@ void ISTA_backtracking()
     while ( iter_step < tot_step ) 
     {
       residual = 0.0 ;
+
+      /* 
+       * Different from the FISTA method below, here Lbar 
+       * is set back to L0 in every iteration step. This will 
+       * possibly allow a larger step size (=1/Lbar).
+       */
       Lbar = L0 ;
 
       // compute the gradient of the log-likelihood functions
@@ -762,7 +768,13 @@ void FISTA_backtracking()
 
     // initialize 
     t_old = t1 ;
+
+    /* 
+     * Notice that, Lbar is only set to L0 at the beginning of the iteration. 
+     * This is different from ISTA, where Lbar is reset in every step.
+     */
     Lbar = L0 ;
+
     iter_step = 0 ;
     prev_cost = 1e8 ;
     min_cost[i] = 1e8 ;
