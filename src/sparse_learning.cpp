@@ -1082,7 +1082,7 @@ void grad_descent_smooth()
       for (int j = 0 ; j < basis_index_per_channel[i].size() ; j ++)
       {
 	tmp = omega_vec[i][j] ;
-	vec_tmp[i][j] = omega_vec[i][j] - grad_dt * ( omega_grad_vec[i][j] + regular_lambda * omega_weights[i][j] * tmp / sqrt(tmp * tmp + eps) ) ;
+	vec_tmp[i][j] = omega_vec[i][j] - grad_dt * ( omega_grad_vec[i][j] + regular_lambda * omega_weights[i][j] * tmp / sqrt(tmp * tmp + l1_eps) ) ;
       }
 
       // compute residual

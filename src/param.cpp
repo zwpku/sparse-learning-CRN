@@ -8,7 +8,7 @@ double T , total_T ;
 vector<double> T_traj_vec ; 
 double regular_lambda ;
 
-double cost_stop_tol, eps, delta, g_cut ;
+double cost_stop_tol, eps, l1_eps , g_cut ;
 int know_reactions_flag, xx_basis_flag ;
 vector<int> num_state_in_traj ;
 

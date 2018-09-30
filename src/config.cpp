@@ -86,7 +86,7 @@ int read_config()
   if ( read_value(cfg, string("num_record_tail_cost"), num_record_tail_cost) < 0 )
     return -1;
 
-  if ( read_value(cfg, string("delta"), delta) < 0 )
+  if ( read_value(cfg, string("l1_eps"), l1_eps) < 0 )
     return -1;
 
   if ( read_value(cfg, string("g_cut"), g_cut) < 0 )

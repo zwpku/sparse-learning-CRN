@@ -50,7 +50,7 @@ extern int tot_num_reaction_in_traj ;
 
 /* 
  * epsL1_flag = 0, use l^1 norm
- * epsL1_flag = 1, use (x*x+eps)^{1/2} 
+ * epsL1_flag = 1, use (x*x + l1_eps)^{1/2} 
  */
 extern int epsL1_flag ;
 
@@ -81,17 +81,17 @@ extern double regular_lambda ;
 
 /* 
  *
- * delta :      constant \epsilon used in the function G_\epsilon
+ * eps :      constant \epsilon used in the function G_\epsilon
  *
  * cost_stop_tol :  convergence check of iteration schemes. 
  * 		    Difference of costs should be smaller than this value
  *
- * g_cut :      function G(x) returns x when x/delta >= g_cut
+ * g_cut :      function G(x) returns x when x/eps >= g_cut
  *
- * eps   : 	parameter used in the epsL1_norm (an approximation of l^1 norm)
+ * l1_eps : 	parameter used in the epsL1_norm (an approximation of l^1 norm)
  *
  */
-extern double cost_stop_tol, eps, delta, g_cut ;
+extern double cost_stop_tol, eps, l1_eps, g_cut ;
 
 /* 
  * tot_step : 		total iteration steps 

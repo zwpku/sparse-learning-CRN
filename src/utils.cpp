@@ -2,12 +2,12 @@
 
 /*
  *
- * Smooth rectifier G_\delta(x) = \delta * ln(1+exp(x/\delta)) 
+ * Smooth rectifier G_\eps(x) = \eps * ln(1+exp(x/\eps)) 
  *
- * G_\delta(x) is a smooth approximation of the activation function \max(x,0),
+ * G_\eps(x) is a smooth approximation of the activation function \max(x,0),
  * since we know
  *
- * 	\lim_{\delta \rightarrow 0} G_\delta(x) = \max(x,0)
+ * 	\lim_{\eps\rightarrow 0} G_\eps(x) = \max(x,0)
  *
  * g_cut:   	parameter used to avoid numerical error when x is too large or
  * 		too small.
@@ -17,21 +17,21 @@
 double G(double x)
 {
   double tmp ;
-  tmp = x / delta ;
-  if (tmp >= g_cut) return x + delta * log1p( exp(-tmp) ) ;
-  if (tmp <= -g_cut) return delta * log1p( exp(tmp) ) ;
+  tmp = x / eps ;
+  if (tmp >= g_cut) return x + eps * log1p( exp(-tmp) ) ;
+  if (tmp <= -g_cut) return eps * log1p( exp(tmp) ) ;
 
-  return delta * log1p( exp(tmp) ) ;
+  return eps * log1p( exp(tmp) ) ;
 }
 
 /* 
- * compute 1st derivative of G_\delta(x)
+ * compute 1st derivative of G_\eps(x)
  *
  */
 double dG(double x)
 {
   double tmp ;
-  tmp = x / delta ;
+  tmp = x / eps ;
   if (tmp >= g_cut) return 1.0 ;
   if (tmp <= -g_cut) return exp(tmp) ;
   return 1.0 / (1.0 + exp(-tmp)) ;
@@ -44,17 +44,17 @@ double logG(double x)
 {
   double tmp ;
   double ret ;
-  tmp = x / delta ;
+  tmp = x / eps ;
 
   if (tmp > g_cut) 
     ret = log(x) + log1p( log1p(exp(-tmp)) / tmp ) ;
   else // function log1p(x) computes ln(1+x), and is more precise when |x| << 1.
-    ret = log( log1p(exp(tmp)) ) + log(delta) ;
+    ret = log( log1p(exp(tmp)) ) + log(eps) ;
  
   // when tmp is very small, this will happen, because log1p(exp(tmp))=0...
   if (isinf(ret))
   {
-    ret = tmp + log(delta) ;
+    ret = tmp + log(eps) ;
   }
   return ret ;
 }
@@ -65,10 +65,10 @@ double logG(double x)
 double d_logG(double x)
 {
   double tmp ;
-  tmp = x / delta ;
-  if (tmp > g_cut) return 1.0 / ( (1.0 + exp(-tmp)) * (x + delta * log1p(exp(-tmp))) ) ;
-  if (tmp < -g_cut) return 1.0 / ( (1.0 + exp(tmp)) * delta ) ;
-  return 1.0 / ( delta * (1 + exp(-tmp)) * log1p(exp(tmp)) ) ;
+  tmp = x / eps ;
+  if (tmp > g_cut) return 1.0 / ( (1.0 + exp(-tmp)) * (x + eps * log1p(exp(-tmp))) ) ;
+  if (tmp < -g_cut) return 1.0 / ( (1.0 + exp(tmp)) * eps ) ;
+  return 1.0 / ( eps * (1 + exp(-tmp)) * log1p(exp(tmp)) ) ;
 }
 
 /*
@@ -122,6 +122,7 @@ double rel_error(double x, double y)
 }
 
 /* 
+ *
  * Compute the weighted l^1 norm of vector (corresponding to certain reaction
  * channel
  *
@@ -132,6 +133,7 @@ double rel_error(double x, double y)
  *
  * return :
  *   s :		the wegithed l^1 norm
+ *
  */
 double l1_norm_partial( int i, vector<vector<double> > & coeff_vec, vector<vector<double> > & weights )
 {
@@ -145,14 +147,14 @@ double l1_norm_partial( int i, vector<vector<double> > & coeff_vec, vector<vecto
 }
 
 /* 
- * Compute \sum_j w_j (|x_j|^2+\epsilon)^{1/2} for the reaction channel i.
+ * Compute \sum_j w_j ( |x_j|^2+l1_eps )^{1/2} for the reaction channel i.
  */
 double epsL1_norm_partial(int i, vector<vector<double> > & coeff_vec, vector<vector<double> > & weights )
 {
   double s ;
   s = 0.0 ;
   for (int j = 0 ; j < coeff_vec[i].size() ; j ++)
-    s += sqrt( coeff_vec[i][j] * coeff_vec[i][j] + eps ) * weights[i][j] ;
+    s += sqrt( coeff_vec[i][j] * coeff_vec[i][j] + l1_eps ) * weights[i][j] ;
   return s ;
 }
 
@@ -660,7 +662,7 @@ int dir_check( char dir_name[] )
  *   In this case, the minimizer can be solved analytically using the
  *   shrinkage function
  *
- * 2. g_j(x_j) = w_j sqrt(x_j^2+eps)
+ * 2. g_j(x_j) = w_j sqrt(x_j^2+l1_eps)
  *   In this case, we solve the minimizer using Newton's method, which should
  *   converge quickly.
  *
@@ -695,12 +697,12 @@ void p_L(int i, double L, vector<vector<double> > & y, vector<vector<double> > &
     else  
     {  
       /* 
-       * epsL1 : g_j(x_j) = w_j sqrt(x_j^2+\eps)
+       * epsL1 : g_j(x_j) = w_j sqrt(x_j^2 + l1_eps)
        *
        * Use Newton's method to solve: g_j(x_j) + L/2 |x_j-(y-grad_f/L)|^2
        *
-       * 1st derivative = w_j x_j/sqrt(x_j^2+\eps) + L(x_j-(y-grad_f/L))
-       * 2st derivative = L + w_j\eps (x_j^2+\eps)^{-3/2}
+       * 1st derivative = w_j x_j/sqrt(x_j^2 + l1_eps) + L(x_j-(y-grad_f/L))
+       * 2st derivative = L + w_j\eps (x_j^2 + l1_eps)^{-3/2}
        *
        */
 
@@ -716,8 +718,8 @@ void p_L(int i, double L, vector<vector<double> > & y, vector<vector<double> > &
       l = 0 ;
       while ( (residual > tol) && (l < mstep) )
       {
-	d1 = wj * xj / sqrt(xj*xj+eps) + L * (xj - tmp) ;
-	d2 = L + wj * eps / pow(xj*xj+eps, 1.5) ;
+	d1 = wj * xj / sqrt(xj*xj + l1_eps) + L * (xj - tmp) ;
+	d2 = L + wj * l1_eps / pow(xj*xj + l1_eps, 1.5) ;
 	// newton's method 
 	xj = xj - d1 / d2 ;
 	residual = fabs(d1 / d2) ;
