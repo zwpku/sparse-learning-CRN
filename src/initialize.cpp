@@ -26,16 +26,37 @@ void init_rand_generator()
   phrtsd(phrase, &is1, &is2) ;
   setall(is1, is2) ;
 
-  // test 10 random numbers and print to log file 
+  // test 10 random numbers on each processor and print to log file 
+  
+  int l_tmp_vec[10] ;
+  for (int i = 0 ; i < 10 ; i ++)
+    l_tmp_vec[i] = ignuin(0, 100000) ;
+
   if (mpi_rank == 0)
   {
-    fprintf(log_file, "\nGenerate 10 random numbers (uniform on [0,1]) :\n ");
+    fprintf(log_file, "\nGenerate 10 random numbers on rank 0 :\n ");
 
-    for (int i = 0 ; i < 10 ; i ++)
-      fprintf( log_file, "%.8f\t", ranf() ) ;
-
-    fprintf(log_file, "\n");
+    for (int j = 0 ; j < 10 ; j ++)
+      fprintf( log_file, "%d\t", l_tmp_vec[j] ) ;
   }
+
+#if USE_MPI == 1
+  MPI_Status status ;
+  if (mpi_rank > 0) 
+    MPI_Send(l_tmp_vec, 10, MPI_INT, 0, 99, MPI_COMM_WORLD) ;
+  else 
+  {
+    for (int i = 1 ; i < mpi_size ; i ++)
+    {
+      fprintf(log_file, "\nGenerate 10 random numbers on rank %d :\n ", i);
+
+      MPI_Recv(l_tmp_vec, 10, MPI_INT, i, 99, MPI_COMM_WORLD, &status) ;
+
+      for (int j = 0 ; j < 10 ; j ++)
+	fprintf( log_file, "%d\t", l_tmp_vec[j] ) ;
+    }
+  }
+#endif
 }
 
 /*
