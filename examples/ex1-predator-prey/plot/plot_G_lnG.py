@@ -1,1 +1,0 @@
-../../plot-scripts/plot_G_lnG.py
