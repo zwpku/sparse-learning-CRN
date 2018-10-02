@@ -10,9 +10,18 @@ int read_config() ;
 void init_rand_generator()
 {
   long is1, is2 ;
+  long current_time ;
 
   char phrase[100] ;
-  sprintf( phrase, "%ld", time(NULL) + mpi_rank ) ;
+
+  if (mpi_rank == 0)
+    current_time = time(NULL) ;
+
+#if USE_MPI == 1
+  MPI_Bcast(&current_time, 1, MPI_LONG, 0, MPI_COMM_WORLD) ;
+#endif
+
+  sprintf( phrase, "%ld", current_time + mpi_rank ) ;
 
   phrtsd(phrase, &is1, &is2) ;
   setall(is1, is2) ;
