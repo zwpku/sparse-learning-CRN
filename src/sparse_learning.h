@@ -35,12 +35,17 @@ extern int num_basis ;
  *  		  on a local process */
 extern int mpi_rank , mpi_size , N_traj, local_N_traj, local_traj_start_idx ;
 
-/* know_reactions_flag:   equals 1 if reaction types are known, 
- 			  otherwise equals 0 */
-
-// xx_basis_flag : 	  equals 1 if x*x is used as basis, 
-//       	   	  equals 0 if x*(x-1) is used
-extern int know_reactions_flag, xx_basis_flag ;
+/* 
+ * know_reactions_flag:   equals 1 if reaction types are known, 
+ * 			  otherwise equals 0 
+ *
+ * xx_basis_flag : 	  equals 1 if x*x is used as basis, 
+ *       	   	  equals 0 if x*(x-1) is used
+ *
+ * flag_backtracking :    1,  if backtracking
+ *  	                  0, if use fixed steps-size (1/Lbar_fixed)
+ */
+extern int know_reactions_flag, xx_basis_flag, flag_backtracking ;
 
 // num_state_in_traj : number of states in each trajectory 
 extern vector<int> num_state_in_traj ;
@@ -64,7 +69,7 @@ extern int epsL1_flag ;
  */
 extern int solver_id ;
 
-extern double grad_dt ;
+extern double grad_dt , Lbar_fixed ;
 
 // T :   length of trajectories when they are simulated using SSA method
 extern double T ;

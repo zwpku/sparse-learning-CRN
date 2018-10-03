@@ -435,16 +435,16 @@ void read_basis_functions()
  * 
  * Iterative Shrinkage-Thresholding Algorithm (with backtracking) for solving the unknown parameters
  *
- * This function implements the ''ISTA with backtracking'' method in the paper:
+ * This function implements the ''ISTA (with fixed step-size or with backtracking)'' method in the paper:
  *
  *  	A. Beck and M. Teboulle, "A fast iterative shrinkage-thresholding algorithm for 
  *   linear inverse problems",  SIAM Journal on Imaging Sciences, vol. 2, no. 1, pp. 183–202, 2009. 
  *
  *
- * This function is similar to the function FISTA_backtracking(). It can be used to compare different numerical schemes. 
+ * This function is similar to the function FISTA(). It can be used to compare different numerical schemes. 
  *
  */
-void ISTA_backtracking()
+void ISTA()
 {
   double residual, tmp ;
   int iter_step , stop_flag ; 
@@ -469,7 +469,10 @@ void ISTA_backtracking()
     omega_grad_vec[i].resize( basis_index_per_channel[i].size() ) ;
   }
 
-  // initialize constants in ISTA
+  /* 
+   * initialize constants in ISTA
+   * only useful when backtracking is enabled (flag_backtracking == 1)
+   */
   L0 = 1.0 ;
   eta = 2.0 ;
 
@@ -518,45 +521,51 @@ void ISTA_backtracking()
     {
       residual = 0.0 ;
 
-      /* 
-       * Different from the FISTA method below, here Lbar 
-       * is set back to L0 in every iteration step. This will 
-       * possibly allow a larger step size (=1/Lbar).
-       */
-      Lbar = L0 ;
-
       // compute the gradient of the log-likelihood functions
       grad_minus_log_likelihood_partial(i, omega_vec, omega_grad_vec) ;
 
-      // evaluate the function at the old point x_{k-1}
-      fval_old = minus_log_likelihood_partial( i, omega_vec, min_ai, max_ai ) ; 
-
-      /* 
-       * compute Lbar
-       *
-       * After iteration, vec_tmp contains the updated state p_L(x_{k-1})
-       */
-      while (1) 
+      if (flag_backtracking == 0) // use fixed time step-size (1/Lbar_fixed)
       {
-	// projection by shrinkage
-	p_L(i, Lbar, omega_vec, omega_grad_vec, vec_tmp) ;
+	p_L(i, Lbar_fixed, omega_vec, omega_grad_vec, vec_tmp) ;
+      } else // decide step-size by backtracking
+      {
+	/* 
+	 * Different from the FISTA method below, here Lbar 
+	 * is set back to L0 in every iteration step. This will 
+	 * possibly allow a larger step size (=1/Lbar).
+	 */
+	Lbar = L0 ;
 
-	// evaluate the function at new point
-	fval_new = minus_log_likelihood_partial(i, vec_tmp, min_ai, max_ai ) ; 
+	// evaluate the function at the old point x_{k-1}
+	fval_old = minus_log_likelihood_partial( i, omega_vec, min_ai, max_ai ) ; 
 
-	// compute the function Q_L(x,y) ( without the term g(x)! ) 
-	tmp = fval_old ;
-	for (int j = 0 ; j < basis_index_per_channel[i].size() ; j ++)
-	  tmp += (vec_tmp[i][j] - omega_vec[i][j]) * omega_grad_vec[i][j] + Lbar * 0.5 * (vec_tmp[i][j] - omega_vec[i][j]) * (vec_tmp[i][j] - omega_vec[i][j]) ;
+	/* 
+	 * compute Lbar
+	 *
+	 * After iteration, vec_tmp contains the updated state p_L(x_{k-1})
+	 */
+	while (1) 
+	{
+	  // projection by shrinkage
+	  p_L(i, Lbar, omega_vec, omega_grad_vec, vec_tmp) ;
 
-	// check whether the condition is satisfied
-	if (fval_new <= tmp) break ;
+	  // evaluate the function at new point
+	  fval_new = minus_log_likelihood_partial(i, vec_tmp, min_ai, max_ai ) ; 
 
-	// if not, increase the constant Lbar 
-	Lbar *= eta ;
+	  // compute the function Q_L(x,y) ( without the term g(x)! ) 
+	  tmp = fval_old ;
+	  for (int j = 0 ; j < basis_index_per_channel[i].size() ; j ++)
+	    tmp += (vec_tmp[i][j] - omega_vec[i][j]) * omega_grad_vec[i][j] + Lbar * 0.5 * (vec_tmp[i][j] - omega_vec[i][j]) * (vec_tmp[i][j] - omega_vec[i][j]) ;
+
+	  // check whether the condition is satisfied
+	  if (fval_new <= tmp) break ;
+
+	  // if not, increase the constant Lbar 
+	  Lbar *= eta ;
+	}
+
+	if (Lbar > max_Lbar) max_Lbar = Lbar ;
       }
-
-      if (Lbar > max_Lbar) max_Lbar = Lbar ;
       
       // compute residual
       residual = rel_error_of_two_vectors(omega_vec[i], vec_tmp[i]) ;
@@ -604,8 +613,15 @@ void ISTA_backtracking()
 
 	  out_file << "\t" << std::setprecision(8) << fval_new + tmp << "\t" << residual << endl ;
 
-	  printf("\tmax-Lbar=%.2e\t\t range of ai=[%.2e, %.2e]\n", max_Lbar, min_ai, max_ai ) ;
-	  fprintf( log_file, "\tmax-Lbar=%.2e\t\t range of ai=[%.2e, %.2e]\n", max_Lbar, min_ai, max_ai ) ;
+	  if (flag_backtracking == 1)
+	  {
+	    printf("\tmax-Lbar=%.2e\t\t range of ai=[%.2e, %.2e]\n", max_Lbar, min_ai, max_ai ) ;
+	    fprintf( log_file, "\tmax-Lbar=%.2e\t\t range of ai=[%.2e, %.2e]\n", max_Lbar, min_ai, max_ai ) ;
+	  } else 
+	  {
+	    printf("\tLbar=%.2e\t\t range of ai=[%.2e, %.2e]\n", Lbar_fixed, min_ai, max_ai ) ;
+	    fprintf( log_file, "\tLbar=%.2e\t\t range of ai=[%.2e, %.2e]\n", Lbar_fixed, min_ai, max_ai ) ;
+	  }
 	}
         max_Lbar = 0 ;
       }
@@ -692,7 +708,7 @@ void ISTA_backtracking()
 }
 
 /*
- * Fast Iterative Shrinkage-Thresholding Algorithm (with backtracking) for solving the unknown parameters
+ * Fast Iterative Shrinkage-Thresholding Algorithm for solving the unknown parameters
  *
  * This function implements the FISTA method introduced in the paper:
  *
@@ -700,7 +716,7 @@ void ISTA_backtracking()
  *   linear inverse problems",  SIAM Journal on Imaging Sciences, vol. 2, no. 1, pp. 183–202, 2009. 
  *
  */
-void FISTA_backtracking()
+void FISTA()
 {
   double residual, tmp ;
   int iter_step , stop_flag, prev_min_step ; 
@@ -795,31 +811,37 @@ void FISTA_backtracking()
       // compute the gradient of the log-likelihood functions
       grad_minus_log_likelihood_partial(i, yk, omega_grad_vec) ;
 
-      // evaluate the function at old point yk
-      fval_old = minus_log_likelihood_partial( i, yk, min_ai, max_ai ) ; 
-
-      /* 
-       * compute Lbar
-       *
-       * After iteration, vec_tmp contains the updated state p_L(yk)
-       */
-      while (1) 
+      if (flag_backtracking == 0) // use fixed time step-size (1/Lbar_fixed)
       {
-	// projection by shrinkage
-	p_L(i, Lbar, yk, omega_grad_vec, vec_tmp) ;
-
-	// evaluate the function at new point
+	p_L(i, Lbar_fixed, omega_vec, omega_grad_vec, vec_tmp) ;
 	fval_new = minus_log_likelihood_partial( i, vec_tmp, min_ai, max_ai ) ; 
+      } else // decide step-size by backtracking
+      {
+	// evaluate the function at old point yk
+	fval_old = minus_log_likelihood_partial( i, yk, min_ai, max_ai ) ; 
+	/* 
+	 * compute Lbar
+	 *
+	 * After iteration, vec_tmp contains the updated state p_L(yk)
+	 */
+	while (1) 
+	{
+	  // projection by shrinkage
+	  p_L(i, Lbar, yk, omega_grad_vec, vec_tmp) ;
 
-	// compute the function Q_L(x,y) ( without the term g(x)! ) 
-	tmp = fval_old ;
-	for (int j = 0 ; j < basis_index_per_channel[i].size() ; j ++)
-	  tmp += (vec_tmp[i][j] - yk[i][j]) * omega_grad_vec[i][j] + Lbar * 0.5 * (vec_tmp[i][j] - yk[i][j]) * (vec_tmp[i][j] - yk[i][j]) ;
+	  // evaluate the function at new point
+	  fval_new = minus_log_likelihood_partial( i, vec_tmp, min_ai, max_ai ) ; 
 
-	// check whether the condition is satisfied
-	if (fval_new <= tmp) break ; 
-	// if not, increase the constant Lbar 
-	Lbar *= eta ;
+	  // compute the function Q_L(x,y) ( without the term g(x)! ) 
+	  tmp = fval_old ;
+	  for (int j = 0 ; j < basis_index_per_channel[i].size() ; j ++)
+	    tmp += (vec_tmp[i][j] - yk[i][j]) * omega_grad_vec[i][j] + Lbar * 0.5 * (vec_tmp[i][j] - yk[i][j]) * (vec_tmp[i][j] - yk[i][j]) ;
+
+	  // check whether the condition is satisfied
+	  if (fval_new <= tmp) break ; 
+	  // if not, increase the constant Lbar 
+	  Lbar *= eta ;
+	}
       }
 
       // update t_{k+1}
@@ -900,8 +922,15 @@ void FISTA_backtracking()
 
 	  out_file << "\t" << std::setprecision(8) << fval_new + g_cost << "\t" << residual << endl ;
 
-	  printf("\tLbar=%.2e\ttk=%.1f\t\trange of ai =[%.2e, %.2e]\n", Lbar, t_new, min_ai, max_ai ) ;
-	  fprintf(log_file, "\tLbar=%.2e\ttk=%.1f\t\trange of ai =[%.2e, %.2e]\n", Lbar, t_new, min_ai, max_ai ) ;
+	  if (flag_backtracking == 1)
+	  {
+	    printf("\tLbar=%.2e\ttk=%.1f\t\trange of ai =[%.2e, %.2e]\n", Lbar, t_new, min_ai, max_ai ) ;
+	    fprintf(log_file, "\tLbar=%.2e\ttk=%.1f\t\trange of ai =[%.2e, %.2e]\n", Lbar, t_new, min_ai, max_ai ) ;
+	  } else 
+	  {
+	    printf("\tLbar=%.2e\ttk=%.1f\t\trange of ai =[%.2e, %.2e]\n", Lbar_fixed, t_new, min_ai, max_ai ) ;
+	    fprintf(log_file, "\tLbar=%.2e\ttk=%.1f\t\trange of ai =[%.2e, %.2e]\n", Lbar_fixed, t_new, min_ai, max_ai ) ;
+	  }
 	}
       }
 
@@ -1384,11 +1413,11 @@ int main ( int argc, char * argv[] )
   switch (solver_id) {
     case 1 :
       // solve the parameters using the Fast Iterative Shrinkage-Thresholding Algorithm (FISTA)
-    	FISTA_backtracking() ;
+    	FISTA() ;
 	break; 
     case 2 :
       // solve the parameters using the Iterative Shrinkage-Thresholding Algorithm (ISTA)
-  	ISTA_backtracking() ;
+  	ISTA() ;
 	break; 
     case 3 :
 	/* 

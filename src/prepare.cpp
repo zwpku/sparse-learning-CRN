@@ -556,7 +556,6 @@ int main ( int argc, char * argv[] )
 
   process_data() ;
 
-
   write_basis_functions() ;
 
   end = clock() ;

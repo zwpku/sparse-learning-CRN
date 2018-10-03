@@ -9,7 +9,7 @@ vector<double> T_traj_vec ;
 double regular_lambda ;
 
 double cost_stop_tol, eps, l1_eps , g_cut ;
-int know_reactions_flag, xx_basis_flag ;
+int know_reactions_flag, xx_basis_flag, flag_backtracking ;
 vector<int> num_state_in_traj ;
 
 int tot_num_reaction_in_traj ;
@@ -28,7 +28,7 @@ vector<double> kappa_vec ;
 
 int poly_order, num_basis, epsL1_flag, solver_id ;
 
-double grad_dt ;
+double grad_dt, Lbar_fixed ;
 
 vector<vector<int> > basis_vec, basis_index_per_channel ;
 

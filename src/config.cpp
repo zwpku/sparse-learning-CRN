@@ -98,6 +98,12 @@ int read_config()
   if ( read_value(cfg, string("know_reactions_flag"), know_reactions_flag) < 0 )
     return -1;
 
+  if ( read_value(cfg, string("flag_backtracking"), flag_backtracking) < 0 )
+    return -1;
+
+  if ( read_value(cfg, string("Lbar_fixed"), Lbar_fixed) < 0 )
+    return -1;
+
   /*
    * If reaction types are known, then use basis x*(x-1) instead of x*x.
    *

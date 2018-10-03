@@ -3,7 +3,8 @@
 /*
  * Generate trajectories using SSA method.
  *
- * Each local processor generates local_N_traj trajectories.
+ * To avoid the problem due to parallel I/O, this code should run with single
+ * (one) processor !
  *
  * In total, N_traj trajectories of length (time) T will be saved under
  * directory ./traj_data/
@@ -19,7 +20,10 @@ void gen_data()
 
   next_state.resize(n) ;
 
-  // each proccessor generates several (=local_N_traj) trajectories
+  /* 
+   * generates trajectories.
+   * Since only 1 cpu is used, local_N_traj = N_traj
+   */
   for ( int j = 0 ; j < local_N_traj ; j ++ )
     {
       // open file 
@@ -72,6 +76,13 @@ int main ( int argc, char * argv[] )
   // prepare the file for printing log information
   sprintf(buf, "./log/ssa.log") ;
   if (init(buf) < 0) return -1 ;
+
+  /* 
+   * This program can only run sequentially !
+   * Otherwise, there might be problem when each processor writes to file in
+   * parallel.
+   */
+  assert(mpi_size == 1) ;
 
   if (mpi_rank == 0)
   {
