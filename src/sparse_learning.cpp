@@ -527,6 +527,7 @@ void ISTA()
       if (flag_backtracking == 0) // use fixed time step-size (1/Lbar_fixed)
       {
 	p_L(i, Lbar_fixed, omega_vec, omega_grad_vec, vec_tmp) ;
+	fval_new = minus_log_likelihood_partial(i, vec_tmp, min_ai, max_ai ) ; 
       } else // decide step-size by backtracking
       {
 	/* 
