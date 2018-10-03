@@ -454,7 +454,7 @@ void ISTA()
 
   // used in ISTA 
   vector<vector<double> > vec_tmp ;
-  double L0, eta, Lbar, max_Lbar ;
+  double eta, Lbar, max_Lbar ;
   double fval_old, fval_new, g_cost, prev_cost ;
 
   double tail_cost_max, tail_cost_min ;
@@ -473,7 +473,6 @@ void ISTA()
    * initialize constants in ISTA
    * only useful when backtracking is enabled (flag_backtracking == 1)
    */
-  L0 = 1.0 ;
   eta = 2.0 ;
 
   /* 
@@ -531,8 +530,7 @@ void ISTA()
       } else // decide step-size by backtracking
       {
 	/* 
-	 * Different from the FISTA method below, here Lbar 
-	 * is set back to L0 in every iteration step. This will 
+	 * Lbar is set back to L0 in every iteration step. This will 
 	 * possibly allow a larger step size (=1/Lbar).
 	 */
 	Lbar = L0 ;
@@ -727,7 +725,7 @@ void FISTA()
 
   // used in FISTA 
   vector<vector<double> > vec_tmp, yk ;
-  double L0, t1, eta, Lbar, t_new, t_old ;
+  double t1, eta, Lbar, max_Lbar, t_new, t_old ;
   double fval_old, fval_new, g_cost, prev_cost ;
 
   double tail_cost_max, tail_cost_min ;
@@ -749,7 +747,6 @@ void FISTA()
   }
 
   // initialize constants in FISTA
-  L0 = 1.0 ;
   t1 = 1.0 ;
   eta = 2.0 ;
 
@@ -786,16 +783,11 @@ void FISTA()
     // initialize 
     t_old = t1 ;
 
-    /* 
-     * Notice that, Lbar is only set to L0 at the beginning of the iteration. 
-     * This is different from ISTA, where Lbar is reset in every step.
-     */
-    Lbar = L0 ;
-
     iter_step = 0 ;
     prev_cost = 1e8 ;
     min_cost[i] = 1e8 ;
     stop_flag = 0 ;
+    max_Lbar = 0 ;
 
     // costs of previous steps are recorded in these two stacks
     tail_cost_vec_1.resize(0);
@@ -818,6 +810,9 @@ void FISTA()
 	fval_new = minus_log_likelihood_partial( i, vec_tmp, min_ai, max_ai ) ; 
       } else // decide step-size by backtracking
       {
+
+	Lbar = L0 ;
+
 	// evaluate the function at old point yk
 	fval_old = minus_log_likelihood_partial( i, yk, min_ai, max_ai ) ; 
 	/* 
@@ -843,6 +838,7 @@ void FISTA()
 	  // if not, increase the constant Lbar 
 	  Lbar *= eta ;
 	}
+	if (Lbar > max_Lbar) max_Lbar = Lbar ;
       }
 
       // update t_{k+1}
@@ -925,14 +921,15 @@ void FISTA()
 
 	  if (flag_backtracking == 1)
 	  {
-	    printf("\tLbar=%.2e\ttk=%.1f\t\trange of ai =[%.2e, %.2e]\n", Lbar, t_new, min_ai, max_ai ) ;
-	    fprintf(log_file, "\tLbar=%.2e\ttk=%.1f\t\trange of ai =[%.2e, %.2e]\n", Lbar, t_new, min_ai, max_ai ) ;
+	    printf("\tmax_Lbar=%.2e\ttk=%.1f\t\trange of ai =[%.2e, %.2e]\n", max_Lbar, t_new, min_ai, max_ai ) ;
+	    fprintf(log_file, "\tmax_Lbar=%.2e\ttk=%.1f\t\trange of ai =[%.2e, %.2e]\n", max_Lbar, t_new, min_ai, max_ai ) ;
 	  } else 
 	  {
 	    printf("\tLbar=%.2e\ttk=%.1f\t\trange of ai =[%.2e, %.2e]\n", Lbar_fixed, t_new, min_ai, max_ai ) ;
 	    fprintf(log_file, "\tLbar=%.2e\ttk=%.1f\t\trange of ai =[%.2e, %.2e]\n", Lbar_fixed, t_new, min_ai, max_ai ) ;
 	  }
 	}
+        max_Lbar = 0 ;
       }
 
       // update

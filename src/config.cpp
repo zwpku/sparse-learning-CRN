@@ -104,6 +104,9 @@ int read_config()
   if ( read_value(cfg, string("Lbar_fixed"), Lbar_fixed) < 0 )
     return -1;
 
+  if ( read_value(cfg, string("L0"), L0) < 0 )
+    return -1;
+
   /*
    * If reaction types are known, then use basis x*(x-1) instead of x*x.
    *

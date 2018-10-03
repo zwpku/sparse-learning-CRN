@@ -69,7 +69,7 @@ extern int epsL1_flag ;
  */
 extern int solver_id ;
 
-extern double grad_dt , Lbar_fixed ;
+extern double grad_dt , Lbar_fixed, L0 ;
 
 // T :   length of trajectories when they are simulated using SSA method
 extern double T ;

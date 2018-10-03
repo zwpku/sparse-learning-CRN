@@ -28,7 +28,7 @@ vector<double> kappa_vec ;
 
 int poly_order, num_basis, epsL1_flag, solver_id ;
 
-double grad_dt, Lbar_fixed ;
+double grad_dt, Lbar_fixed, L0 ;
 
 vector<vector<int> > basis_vec, basis_index_per_channel ;
 
