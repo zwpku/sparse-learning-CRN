@@ -637,7 +637,7 @@ void ISTA()
       out_file << basis_index_per_channel[i].size() << endl ;
 
       for (int j = 0 ; j < omega_vec[i].size(); j ++)
-	out_file << std::setprecision(8) << omega_vec[i][j] << ' ';
+	out_file << std::setprecision(8) << omega_vec[i][j] / omega_basis_rescale_cst[i][j] << ' ';
       out_file << endl ;
 
       out_file.close() ;
@@ -954,7 +954,7 @@ void FISTA()
       out_file << basis_index_per_channel[i].size() << endl ;
 
       for (int j = 0 ; j < omega_vec[i].size(); j ++)
-	out_file << std::setprecision(8) << omega_vec[i][j] << ' ';
+	out_file << std::setprecision(8) << omega_vec[i][j] / omega_basis_rescale_cst[i][j] << ' ';
       out_file << endl ;
 
       out_file.close() ;
@@ -1198,7 +1198,7 @@ void grad_descent_smooth()
       out_file << basis_index_per_channel[i].size() << endl ;
 
       for (int j = 0 ; j < omega_vec[i].size(); j ++)
-	out_file << std::setprecision(8) << omega_vec[i][j] << ' ';
+	out_file << std::setprecision(8) << omega_vec[i][j] / omega_basis_rescale_cst[i][j] << ' ';
       out_file << endl ;
 
       out_file.close() ;
