@@ -89,28 +89,6 @@ void determine_channel_index_of_each_reaction_in_traj(vector<vector<vector<int> 
 
   free(l_mi_traj) ;
   free(mi_traj_vec) ;
-
-  // assign reactions to channels
-  if (know_reactions_flag == 1)
-  {
-    reactions_in_channel.resize(channel_num) ;
-    for (int i = 0; i < R; i ++)
-    {
-      if (channel_to_idx.count(vvec[i]) == 1)
-      {
-	idx = channel_to_idx[vvec[i]] ;
-	reactions_in_channel[idx].push_back(i) ;
-      }
-      else 
-      {
-	if (mpi_rank == 0)
-	{
-	  printf("\nWarning: reaction %d doesn't correspond to any channel found in trajectories\n", i);
-	  fprintf(log_file, "\nWarning: reaction %d doesn't correspond to any channel found in trajectories\n", i);
-	}
-      }
-    }
-  }
 }
 
 /* 
@@ -402,19 +380,8 @@ void read_basis_functions()
     }
 
     for (int j = 0 ; j < itmp ; j ++)
-      {
-	in_file >> omega_vec[i][j] ;
+      in_file >> omega_vec[i][j] ;
 
-	if ( (is_nonpositive(omega_vec[i][j]) == 1) && (know_reactions_flag == 1) )
-	  {
-	    if (mpi_rank == 0)
-	    {
-	      printf("Warning:  initial value of the %dth parameter in the %dth channel is nonpositive: %.4f. Changed to 1.0\n", j, i, omega_vec[i][j] ) ;
-	      fprintf(log_file, "Warning:  initial value of the %dth parameter in the %dth channel is nonpositive: %.4f. Changed to 1.0\n", j, i, omega_vec[i][j] ) ;
-	    }
-	    omega_vec[i][j] = 1.0 ;
-	  }
-      }
     in_file.close() ;
   } 
 
@@ -1024,11 +991,7 @@ void FISTA()
 }
 
 /*
- *
- * Simple gradient descent method (with fixed step size) to solve the smooth optimization problem,
- * i.e., when either epsL1_flag=1 or know_reactions_flag=1.
- * (in the latter case there is no penalty term)
- *
+ * Simple gradient descent method (with fixed step size) to solve the smooth optimization problem, i.e., when epsL1_flag=1.
  */
 
 void grad_descent_smooth() 
@@ -1271,62 +1234,6 @@ void grad_descent_smooth()
   }
 }
 
-/*
- *
- * Directly estimation of the rate constants for reaction channels which contain
- * only one reaction.
- *
- * When the reaction types are known (know_reactions_flag=1), we are
- * minimizing the log-likelihood function itself. 
- *
- * In this case, when certain reaction channel only contains 1 reaction, then its unknown 
- * rate constant can be estimated directly by counting.  
- *
- * The results can used to compare with those obtained from iterative methods.
- *
- */
-void direct_compute_channel_with_single_reaction() 
-{
-  int idx;
-  double local_s, s ;
-
-  if (mpi_rank == 0) 
-    {
-      printf("\n========================================================\n") ;
-      fprintf(log_file, "\n========================================================\n") ;
-
-      printf("Direct calculation of rates of the following channels (which contains one reaction):\n") ;
-      fprintf(log_file, "Direct calculation of rates of the following channels (which contains one reaction):\n") ;
-    }
-
-  for ( int i = 0 ; i < channel_num ; i ++ )
-    if ( (basis_index_per_channel[i].size()==1) && (channel_to_learn_list[i] == 1) )
-    {
-      idx = basis_index_per_channel[i][0] ;
-      local_s = 0 ;
-      for (int traj_idx = 0 ; traj_idx < local_N_traj ; traj_idx ++)
-	for (int j = 0; j < num_state_in_traj[traj_idx] ; j ++)
-	  local_s += waiting_time_vec[traj_idx][j] * val_basis_funct(idx, traj_vec[traj_idx][j]) ;
-
-#if USE_MPI == 1
-      MPI_Allreduce( &local_s, &s, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD ) ;
-#else
-      s = local_s ;
-#endif
-
-      if (mpi_rank == 0) 
-      {
-	printf("\tRate of channel %d: %.8f\n", i, Mi_in_all_traj[i] * 1.0 / s) ;
-	fprintf(log_file, "\tRate of channel %d: %.8f\n", i, Mi_in_all_traj[i] * 1.0 / s) ;
-      }
-    }
-  if (mpi_rank == 0)
-  {
-    printf("========================================================\n") ;
-    fprintf(log_file, "========================================================\n") ;
-  }
-}
-
 void check_solver_id()
 {
   if ( (solver_id > 3) || (solver_id < 1) )
@@ -1341,7 +1248,7 @@ void check_solver_id()
 
   if (solver_id == 3) 
   {
-    if ( (know_reactions_flag==0) && (epsL1_flag==0) )
+    if (epsL1_flag==0) 
     {
       if (mpi_rank == 0)
       {
@@ -1395,6 +1302,8 @@ int main ( int argc, char * argv[] )
 
   start = clock() ;
 
+  know_reactions_flag=0 ;
+
   sprintf(buf, "./log/sparse_infer.log") ;
   if ( init(buf) < 0 ) return -1 ;
 
@@ -1421,17 +1330,12 @@ int main ( int argc, char * argv[] )
 	/* 
 	 * Simple (and slow) gradient descent method. 
 	 *
-	 * Only when either epsL1_flag=1 or know_reactions_flag=1, i.e., the object function is smooth.
+	 * Only when epsL1_flag=1, i.e., the object function is smooth.
 	 *
 	 */
 	grad_descent_smooth() ;
 	break ;
   }
-
-  // when reaction types are known and a channel has only one reaction, then
-  // the parameter can be computed directly
-  if (know_reactions_flag == 1)
-    direct_compute_channel_with_single_reaction() ;
 
   end = clock() ;
 

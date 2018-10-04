@@ -95,9 +95,6 @@ int read_config()
   if ( read_value(cfg, string("output_interval"), output_interval) < 0 )
     return -1;
 
-  if ( read_value(cfg, string("know_reactions_flag"), know_reactions_flag) < 0 )
-    return -1;
-
   if ( read_value(cfg, string("flag_backtracking"), flag_backtracking) < 0 )
     return -1;
 
@@ -106,13 +103,6 @@ int read_config()
 
   if ( read_value(cfg, string("L0"), L0) < 0 )
     return -1;
-
-  /*
-   * If reaction types are known, then use basis x*(x-1) instead of x*x.
-   *
-   * See the document in the file prepare.cpp for details.
-   */
-  if (know_reactions_flag == 1) xx_basis_flag = 0 ;
 
   return 0 ;
 }

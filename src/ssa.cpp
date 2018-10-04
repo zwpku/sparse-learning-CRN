@@ -73,6 +73,8 @@ int main ( int argc, char * argv[] )
   clock_t start , end ;
   char buf[30]; 
 
+  know_reactions_flag = 1 ;
+
   // prepare the file for printing log information
   sprintf(buf, "./log/ssa.log") ;
   if (init(buf) < 0) return -1 ;

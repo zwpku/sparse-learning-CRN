@@ -31,7 +31,7 @@ endif
 #
 # 	3. the directory containing mpi.h, required by MPICH.
 #
-LOCAL_DIR=/home/weizhang/local/
+LOCAL_DIR=/home/mi/weizhang/local/
 INCLUDES=-I$(LOCAL_DIR)/include 
 
 LDFLAGS=-Wl,-rpath,$(LOCAL_DIR)/lib -L$(LOCAL_DIR)/lib -lm -lpthread -lconfig++ -lranlib 
@@ -43,9 +43,12 @@ OBJECTS=$(SOURCES:.cpp=.o)
 .cpp.o:
 	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
 
-all : ssa sparse_learning prepare 
+all : ssa sparse_learning prepare mle
 
 ssa : ssa.o param.o config.o initialize.o utils.o
+	$(CC) $^ -o $@ $(CFLAGS) $(LDFLAGS)
+
+mle : mle.o param.o config.o initialize.o utils.o
 	$(CC) $^ -o $@ $(CFLAGS) $(LDFLAGS)
 
 sparse_learning : sparse_learning.o param.o config.o initialize.o utils.o
@@ -55,4 +58,4 @@ prepare : prepare.o param.o config.o initialize.o utils.o
 	$(CC) $^ -o $@ $(CFLAGS) $(LDFLAGS)
 
 clean:
-	rm -f $(OBJECTS) ssa sparse_learning prepare 
+	rm -f $(OBJECTS) ssa sparse_learning prepare mle

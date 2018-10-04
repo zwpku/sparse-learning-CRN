@@ -179,16 +179,6 @@ int init(char * log_file_name )
   }
   else local_traj_start_idx += N_traj % mpi_size ;
 
-  // for SSA, reactions information is need, therefore the input parameter is ignored
-  if ( (strcmp(log_file_name, "./log/ssa.log")==0) && (know_reactions_flag == 0) )
-  {
-    know_reactions_flag = 1 ;
-    if (mpi_rank == 0)
-    {
-      fprintf(log_file, "Parameter know_reaction_flag is reset to 1\n");
-    }
-  }
-
   // if reaction types are known, then read reactions from file 
   if (know_reactions_flag == 1) read_reactions() ;
 

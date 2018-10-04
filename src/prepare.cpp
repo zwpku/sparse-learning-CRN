@@ -19,10 +19,6 @@
  * Mi_in_all_traj: 		occurrence number of each reaction channel
  * 				within all trajectories 
  *
- * If reaction types are known (know_reactions_flag = 1), then:
- *
- * reactions_in_channel:	indices of reactions in each reaction channel 
- *
  */
 
 void find_channels_in_traj(vector<vector<vector<int> > > & traj_data)
@@ -87,36 +83,6 @@ void find_channels_in_traj(vector<vector<vector<int> > > & traj_data)
   for (int i = 0 ; i < channel_num; i ++)
     for (int traj_idx = 0 ; traj_idx < N_traj ; traj_idx ++)
       Mi_in_all_traj[i] += Mi_in_traj[traj_idx][i] ;
-
-  // assign reactions to channels
-  if (know_reactions_flag == 1)
-  {
-    reactions_in_channel.resize(channel_num) ;
-    for (int i = 0; i < R; i ++)
-    {
-      if (channel_to_idx.count(vvec[i]) == 1)
-      {
-	// determine channel index of reaction i
-	idx = channel_to_idx[vvec[i]] ;
-	// add to reaction list of the channel 
-	reactions_in_channel[idx].push_back(i) ;
-      }       
-      else // something wrong ...
-      {
-	printf("\nWarning: reaction %d doesn't correspond to any channel found in trajectories\n", i) ;
-	fprintf(log_file, "\nWarning: reaction %d doesn't correspond to any channel found in trajectories\n", i) ;
-      }
-    }
-
-    // make sure that each channel should contain at least one reaction
-    for (int i = 0 ; i < channel_num; i ++)
-      if ( reactions_in_channel[i].size() == 0 )
-      {
-	printf("Error: channel %d doesn't contain any reactions! Please check the trajectory data!\n", i) ;
-	fprintf(log_file, "Error: channel %d doesn't contain any reactions! Please check the trajectory data!\n", i) ;
-	exit(1);
-      }
-  }
 }
 
 /* 
@@ -287,25 +253,8 @@ void process_data()
  * considered. Correspondingly, the basis functions are either 1st/2nd
  * polynomials. 
  *
- * (Task 1) If reaction types are known (know_reactions_flag=1), then the task of the
- * code ./sparse_learning is to learn the rate constants of reactions. 
- * In this case, each reaction corresponds to one basis function, and therefore 
- * there will be in total R basis functions. 
- *
- * The correspondence between reactions and basis functions are as follows:
- *
- *    Reaction    |   Basis
- * 1. A  -> *     |    x
- * 2. A+B -> *    |    x*y
- * 3. 2A -> *     |    x(x-1)
- *
- * In the above, A, B are two different species, and x, y are their copy-numbers.
- *
- * The (sparse) weights of rate constants are set to 0 in the output file.
- *
- * (Task 2) If reaction types are unknown (know_reactions_flag=0), the number of basis
- * functions (num_basis) depends on the value of poly_order. The task of 
- * the code ./sparse_learning is to approximate propensity functions of all
+ * The number of basis functions (num_basis) depends on the value of poly_order. 
+ * The task of the code ./sparse_learning is to approximate propensity functions of all
  * channels using basis functions. 
  *
  * There are n 1st order polynomial basis: 
@@ -328,75 +277,32 @@ void write_basis_functions()
 {
   vector<int> reactant_idx ;
 
-  /*
-   * Record vectors of (non-repeated) reactants among the R reactions
-   *
-   * It will only be used in Task 1.
-   *
-   */
-  map<vector<int>, int> vvec_in_map ;
-
-  /* Records the index of basis function for each of R reactions.
-   *
-   * It will only be used in Task 1.
-   */
-  vector<int> basis_idx_of_reactions ;
-  basis_idx_of_reactions.resize(R) ;
-
   // initialize the vector before including any basis functions
   basis_vec.resize(0) ;
 
-  // if reaction types are known 
-  if (know_reactions_flag == 1)
+  // include polynomial functions of order 1 (linear) as basis functions
+  reactant_idx.resize(1) ; 
+  for (int i =0 ; i < n; i++)
   {
-    // (Task 1) in this case, we use the propensity functions of R reactions (excluding the repeated ones) as basis functions
-    for (int i = 0; i < R; i ++)
-      // if the same vector of reactants has not be recorded
-      if ( vvec_in_map.count(vvec_in[i]) == 0 ) 
-	{
-	  reactant_idx.resize(0) ;
-	  for (int j = 0; j < n; j ++)
-	    for (int j1 = 0; j1 < vvec_in[i][j] ; j1 ++)
-	      reactant_idx.push_back(j) ;
-	    
-	  // add this new basis 
-	  basis_vec.push_back( reactant_idx ) ;
-
-	  // record its index
-	  vvec_in_map[ vvec_in[i] ] = basis_vec.size() - 1 ;
-	  basis_idx_of_reactions[i] = basis_vec.size() - 1 ;
-	}
-      else // if the same basis has already occured
-	basis_idx_of_reactions[i] = vvec_in_map[ vvec_in[i] ] ;
-
-    num_basis = vvec_in_map.size() ; 
+    reactant_idx[0] = i ;
+    basis_vec.push_back( reactant_idx ) ;
   }
-  else // (Task 2)
-  {
-    // include polynomial functions of order 1 (linear) as basis functions
-    reactant_idx.resize(1) ; 
-    for (int i =0 ; i < n; i++)
-    {
-      reactant_idx[0] = i ;
-      basis_vec.push_back( reactant_idx ) ;
-    }
 
-    // include quadratic functions as basis functions
-    if (poly_order == 2)
-    {
-      reactant_idx.resize(2) ; 
-      for (int i=0 ; i < n ; i++)
-	for (int j=i ; j < n ; j++)
-	{
-	  reactant_idx[0] = i ;
-	  reactant_idx[1] = j ;
-	  basis_vec.push_back( reactant_idx ) ;
-	}
-      num_basis = n * (3 + n) / 2 ;   
-    } else 
-    {
-      num_basis = n ; 
-    }
+  // include quadratic functions as basis functions
+  if (poly_order == 2)
+  {
+    reactant_idx.resize(2) ; 
+    for (int i=0 ; i < n ; i++)
+      for (int j=i ; j < n ; j++)
+      {
+	reactant_idx[0] = i ;
+	reactant_idx[1] = j ;
+	basis_vec.push_back( reactant_idx ) ;
+      }
+    num_basis = n * (3 + n) / 2 ;   
+  } else 
+  {
+    num_basis = n ; 
   }
 
   // initialization
@@ -450,51 +356,23 @@ void write_basis_functions()
 	exit(1) ;
       }
 
-    if (know_reactions_flag == 1) // (Task 1) if we know reaction structures
-    {
-      // output number of basis functions for channel i, in this case, the
-      // number of reactions in the channel 
-      out_file << reactions_in_channel[i].size() << endl ;
+    // output number of basis functions for channel i, 
+    // all basis functions will be used by default
+    out_file << num_basis << ' ' << endl ;
 
-      int ridx ;
-      for (int j = 0 ; j < reactions_in_channel[i].size() ; j ++)
-      {
-	// get the index of reaction first
-	ridx = reactions_in_channel[i][j] ;
-	// then output the index of the basis function that corresponds to this reaction
-	out_file << basis_idx_of_reactions[ridx] << ' ' ;
-      }
-      out_file << endl ;
+    for (int j = 0 ; j < num_basis ; j ++)
+      out_file << j << ' ' ;
+    out_file << endl ;
 
-      // the sparsity weight of each parameter equals to 0
-      for (int j = 0 ; j < reactions_in_channel[i].size() ; j ++)
-	out_file << 0.0 << ' ' ;
-      out_file << endl ;
+    // output weight of each parameter 
+    for (int j = 0 ; j < num_basis ; j ++)
+      out_file << 1.0 << ' ' ;
+    out_file << endl ;
 
-      // initial value for each basis functions 
-      for (int j = 0 ; j < reactions_in_channel[i].size() ; j ++)
-	out_file << 1.0 << ' ' ;
-      out_file << endl ;
-    } else  // (Task 2) unknown reaction types
-    {
-      // output number of basis functions for channel i, 
-      // all basis functions will be used by default
-      out_file << num_basis << ' ' << endl ;
-
-      for (int j = 0 ; j < num_basis ; j ++)
-	out_file << j << ' ' ;
-      out_file << endl ;
-
-      // output weight of each parameter 
-      for (int j = 0 ; j < num_basis ; j ++)
-	out_file << 1.0 << ' ' ;
-      out_file << endl ;
-
-      // initial value of parameters for each basis functions 
-      for (int j = 0 ; j < num_basis ; j ++)
-	out_file << 0.0 << ' ' ;
-      out_file << endl ;
-    }
+    // initial value of parameters for each basis functions 
+    for (int j = 0 ; j < num_basis ; j ++)
+      out_file << 0.0 << ' ' ;
+    out_file << endl ;
 
     out_file.close() ;
   }
@@ -536,6 +414,8 @@ int main ( int argc, char * argv[] )
 
   clock_t start , end ;
   char buf[30]; 
+
+  know_reactions_flag = 0 ;
 
   sprintf(buf, "./log/prepare.log") ;
   if (init(buf) < 0) return -1 ;
