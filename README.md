@@ -13,7 +13,7 @@ This package relies on the following external libraries.
        	This library provides random number generators. 
 	It is used in the code [./src/ssa.cpp](./src/ssa.cpp) to generate random trajectories of reactions.
 
-To build a parallel code, we also need
+To build a parallel code (optional), we also need 
    
    3.  	[MPICH](https://www.mpich.org).
 	The trajectory data will be distributed and analysed by different processors. 
