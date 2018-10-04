@@ -535,6 +535,7 @@ void prepare_basis_functions()
 
   omega_vec.resize( channel_num ) ;
   basis_index_per_channel.resize( channel_num ) ;
+  omega_basis_rescale_cst.resize( channel_num ) ;
 
   int itmp, ridx ;
 
@@ -543,7 +544,7 @@ void prepare_basis_functions()
     itmp =  reactions_in_channel[i].size() ; 
 
     basis_index_per_channel[i].resize( itmp ) ;
-    // read indices of basis functions for channel i
+    // indices of basis functions for channel i
     for ( int j = 0 ; j < itmp ; j ++ )
     {
 	ridx = reactions_in_channel[i][j] ;
@@ -551,6 +552,7 @@ void prepare_basis_functions()
     }
 
     omega_vec[i].resize(itmp, 1.0) ;
+    omega_basis_rescale_cst[i].resize(itmp, 1.0) ;
   }
 }
 

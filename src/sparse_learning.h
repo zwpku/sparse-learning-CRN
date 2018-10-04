@@ -80,8 +80,7 @@ extern double total_T ;
 // T_traj_vec : vector containing length of time for each trajectory 
 extern vector<double> T_traj_vec; 
 
-// sparse intensity constant, the sparse intensity for each 
-// parameter (with indice i, j) is regular_lambda * omega_weights[i][j]
+// sparse intensity constant 
 extern double regular_lambda ;
 
 /* 
@@ -144,8 +143,8 @@ extern vector<double> kappa_vec ;
 // total number of unknown parameters need to be estimated
 extern int total_unknown_omega_parameters ;
 
-// unknown parameters and their sparsity weights  
-extern vector<vector<double> > omega_vec , omega_weights ;
+// unknown parameters and their rescale constant
+extern vector<vector<double> > omega_vec , omega_basis_rescale_cst;
 
 /* 
  * The cost may not be monotonically descreasing during the iteration of FISTA algorithm.
@@ -207,7 +206,7 @@ double rel_error_of_two_vectors( vector<double> & vec1, vector<double> & vec2 ) 
 void print_omega_coefficients( int i, vector<vector<double> > & coeff_vec ) ;
 
 void p_L(int i, double L, vector<vector<double> > & yk, vector<vector<double> > & grad_f, vector<vector<double> > & vec_tmp) ;
-double penalty_g_partial(int i, vector<vector<double> > & omega_vec, vector<vector<double> > & omega_weights) ;
+double penalty_g_partial(int i, vector<vector<double> > & omega_vec, vector<vector<double> > & scale_cst) ;
 
 int is_nonpositive(double x) ;
 int is_zero(double x) ;

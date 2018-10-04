@@ -34,7 +34,7 @@ vector<vector<int> > basis_vec, basis_index_per_channel ;
 
 int total_unknown_omega_parameters ;
 
-vector<vector<double> > omega_vec, omega_weights ;
+vector<vector<double> > omega_vec, omega_basis_rescale_cst ;
 
 vector<double> min_cost ;
 

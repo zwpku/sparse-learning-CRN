@@ -129,32 +129,33 @@ double rel_error(double x, double y)
  * input :
  *   i : 		index of the channel
  *   coeff_vec :	coefficient vector
- *   weights :		the weights for each component
+ *   scale_cst :	the rescale constant for each component
  *
  * return :
  *   s :		the wegithed l^1 norm
  *
  */
-double l1_norm_partial( int i, vector<vector<double> > & coeff_vec, vector<vector<double> > & weights )
+double l1_norm_partial( int i, vector<vector<double> > & coeff_vec, vector<vector<double> > & scale_cst)
 {
   double s;
   s = 0.0 ;
 
   for (int j = 0 ; j < coeff_vec[i].size() ; j ++)
-    s += fabs(coeff_vec[i][j]) * weights[i][j] ;
+    s += fabs(coeff_vec[i][j] / scale_cst[i][j]);
 
   return s ;
 }
 
 /* 
- * Compute \sum_j w_j ( |x_j|^2+l1_eps )^{1/2} for the reaction channel i.
+ * Compute \sum_j ( |x_j/w_j|^2+l1_eps )^{1/2} for the reaction channel i,
+ * where w_j is the rescale constant
  */
-double epsL1_norm_partial(int i, vector<vector<double> > & coeff_vec, vector<vector<double> > & weights )
+double epsL1_norm_partial(int i, vector<vector<double> > & coeff_vec, vector<vector<double> > & scale_cst)
 {
   double s ;
   s = 0.0 ;
   for (int j = 0 ; j < coeff_vec[i].size() ; j ++)
-    s += sqrt( coeff_vec[i][j] * coeff_vec[i][j] + l1_eps ) * weights[i][j] ;
+    s += sqrt( coeff_vec[i][j] * coeff_vec[i][j] / (scale_cst[i][j] * scale_cst[i][j]) + l1_eps ) ;
   return s ;
 }
 
@@ -363,7 +364,7 @@ double val_ai(int channel_idx, vector<int> &state, vector<vector<double> > & coe
     // index of basis function
     idx = basis_index_per_channel[channel_idx][i] ;
     // linear combination
-    s += val_basis_funct(idx, state) * coeff_vec[channel_idx][i] ;
+    s += val_basis_funct(idx, state) * coeff_vec[channel_idx][i] / omega_basis_rescale_cst[channel_idx][i] ;
   }
   return s ;
 }
@@ -577,7 +578,7 @@ void grad_minus_log_likelihood_partial( int i0, vector<vector<double> > & coeff_
 	    } else 
 	      local_s += tmp * waiting_time_vec[traj_idx][i] ;
 	  } else // in this case, ai can be negative
-	    local_s += tmp * dG(tmp_ai) * waiting_time_vec[traj_idx][i] ;
+	    local_s += tmp * dG(tmp_ai) * waiting_time_vec[traj_idx][i]  ;
 	}
 
 #if USE_MPI == 1
@@ -588,7 +589,7 @@ void grad_minus_log_likelihood_partial( int i0, vector<vector<double> > & coeff_
 #endif
       
       // normalize by dividing the total time 
-      grad_coeff[i0][j0] = s / total_T ;
+      grad_coeff[i0][j0] = s / ( total_T * omega_basis_rescale_cst[i0][j0] ) ;
     }
 }
 
@@ -619,7 +620,7 @@ void print_omega_coefficients( int i, vector<vector<double> > & coeff_vec )
   cout << "):\n\t\t";
   for (int j = 0 ; j < coeff_vec[i].size() ; j ++)
   {
-    printf( "%.16e\t", coeff_vec[i][j] ) ;
+    printf( "%.16e\t", coeff_vec[i][j] / omega_basis_rescale_cst[i][j] ) ;
   }
   cout << endl ;
 }
@@ -658,11 +659,11 @@ int dir_check( char dir_name[] )
  * separately, by solving several one-dimensional optimization problems.
  *
  * Two types of g_j(x) are considered.
- * 1. l^1 norm: g_j(x_j) = w_j |x_j|
+ * 1. l^1 norm: g_j(x_j) = |x_j/w_j|
  *   In this case, the minimizer can be solved analytically using the
  *   shrinkage function
  *
- * 2. g_j(x_j) = w_j sqrt(x_j^2+l1_eps)
+ * 2. g_j(x_j) = sqrt(|x_j/w_j|^2+l1_eps)
  *   In this case, we solve the minimizer using Newton's method, which should
  *   converge quickly.
  *
@@ -680,8 +681,8 @@ void p_L(int i, double L, vector<vector<double> > & y, vector<vector<double> > &
 
   for (int j = 0 ; j <  basis_index_per_channel[i].size() ; j ++)
   {
-    // the weight constant 
-    wj = regular_lambda * omega_weights[i][j] ; 
+    // the weight constant, computed using rescale constant
+    wj = regular_lambda / omega_basis_rescale_cst[i][j] ; 
 
     // y - 1/L * \nabla f(y)
     tmp = y[i][j] - grad_f[i][j] / L ;
@@ -697,7 +698,7 @@ void p_L(int i, double L, vector<vector<double> > & y, vector<vector<double> > &
     else  
     {  
       /* 
-       * epsL1 : g_j(x_j) = w_j sqrt(x_j^2 + l1_eps)
+       * epsL1 : g_j(x_j) = sqrt((x_j/w_j)^2 + l1_eps)
        *
        * Use Newton's method to solve: g_j(x_j) + L/2 |x_j-(y-grad_f/L)|^2
        *
@@ -737,12 +738,12 @@ void p_L(int i, double L, vector<vector<double> > & y, vector<vector<double> > &
   }
 }
 
-double penalty_g_partial(int i, vector<vector<double> > & omega_vec, vector<vector<double> > & weights) 
+double penalty_g_partial(int i, vector<vector<double> > & omega_vec, vector<vector<double> > & scale_cst) 
 {
   if (epsL1_flag == 0) // weighted l^1 norm
-    return regular_lambda * l1_norm_partial(i, omega_vec, weights) ;
+    return regular_lambda * l1_norm_partial(i, omega_vec, scale_cst) ;
   else 
-    return regular_lambda * epsL1_norm_partial(i, omega_vec, weights) ;
+    return regular_lambda * epsL1_norm_partial(i, omega_vec, scale_cst) ;
 }
 
 /*

@@ -244,6 +244,34 @@ void process_data()
   fprintf(log_file, "========================================================\n\n") ;
 }
 
+void find_min_max_val_of_basis_in_traj(int c_idx, vector<double> & min_val, vector<double> & max_val) 
+{
+  int idx ;
+  double tmp ;
+
+  for (int j = 0 ; j < num_basis ; j ++)
+  {
+    min_val[j] = 1e12 ;
+    max_val[j] = -1e12 ;
+    // loop for each trajectory 
+    for (int traj_idx = 0 ; traj_idx < N_traj ; traj_idx ++)
+      for (int i = 0; i < num_state_in_traj[traj_idx]-1; i ++) // loop for each jump (or reaction)
+    {
+      // get the index of the channel
+      idx = channel_idx_in_traj[traj_idx][i] ;
+
+      // only when the jump is in channel i0 
+      if (idx != c_idx) continue ;
+
+      // compute the value of basis function at the current state
+      tmp = val_basis_funct(j, traj_vec[traj_idx][i]) ;
+
+      if (tmp < min_val[j]) min_val[j] = tmp ;
+      if (tmp > max_val[j]) max_val[j] = tmp ;
+    }
+  }
+}
+
 /* 
  *
  * Write basis functions to file. The information of basis functions will be
@@ -321,8 +349,8 @@ void write_basis_functions()
   char buf[100] ;
   sprintf( buf, "./output/basis_funct_info.txt" ) ;
 
-  printf("\nBasis functions are written into the file: %s\n", buf) ;
-  fprintf(log_file, "\nBasis functions are written into the file: %s\n", buf) ;
+  printf("\nBasis functions are written into the file: %s\n\n", buf) ;
+  fprintf(log_file, "\nBasis functions are written into the file: %s\n\n", buf) ;
   out_file.open(buf) ;
   if ( ! out_file.is_open() )
     {
@@ -342,6 +370,11 @@ void write_basis_functions()
   out_file << endl ;
   out_file.close() ;
 
+  vector<double> min_val , max_val ;
+
+  min_val.resize( num_basis ) ;
+  max_val.resize( num_basis ) ;
+
   // write basis information of each channel 
   for (int i = 0 ; i < channel_num ; i ++)
   {
@@ -355,6 +388,8 @@ void write_basis_functions()
 	fprintf(log_file, "Error: can not open output file : %s. \n\n", buf) ;
 	exit(1) ;
       }
+
+    find_min_max_val_of_basis_in_traj(i, min_val, max_val) ;
 
     // output number of basis functions for channel i, 
     // all basis functions will be used by default
@@ -372,9 +407,30 @@ void write_basis_functions()
     // initial value of parameters for each basis functions 
     for (int j = 0 ; j < num_basis ; j ++)
       out_file << 0.0 << ' ' ;
+    out_file << endl << endl ;
+
+    // min value of each basis function 
+    for (int j = 0 ; j < num_basis ; j ++)
+      out_file << min_val[j] << ' ' ;
+    out_file << endl ;
+
+    // max value of each basis function 
+    for (int j = 0 ; j < num_basis ; j ++)
+      out_file << max_val[j] << ' ' ;
     out_file << endl ;
 
     out_file.close() ;
+
+    printf("Range of each basis function in channel %d: \n", i) ;
+    fprintf(log_file, "Range of each basis function in channel %d: \n", i) ;
+    for (int j = 0 ; j < num_basis ; j ++)
+    {
+      printf("[%.2e, %.2e]\t", min_val[j], max_val[j]) ;
+      fprintf(log_file, "[%.2e, %.2e]\t", min_val[j], max_val[j]) ;
+    }
+
+    printf("\n\n");
+    fprintf(log_file, "\n\n");
   }
 
   /* 

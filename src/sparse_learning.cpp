@@ -335,7 +335,7 @@ void read_basis_functions()
 
   basis_index_per_channel.resize( channel_num ) ;
   omega_vec.resize( channel_num ) ;
-  omega_weights.resize( channel_num ) ;
+  omega_basis_rescale_cst.resize( channel_num ) ;
 
   total_unknown_omega_parameters = 0 ;
 
@@ -359,23 +359,23 @@ void read_basis_functions()
     for ( int j = 0 ; j < basis_index_per_channel[i].size() ; j ++ )
       in_file >> basis_index_per_channel[i][j] ;
 
-    //  read sparsity weights of parameters for channel i
+    //  read rescale-constant of parameters for channel i
     itmp = basis_index_per_channel[i].size() ; 
-    omega_weights[i].resize(itmp) ;
+    omega_basis_rescale_cst[i].resize(itmp) ;
     omega_vec[i].resize(itmp) ;
 
     for (int j = 0 ; j < itmp ; j ++)
     {
-      in_file >> omega_weights[i][j] ;
+      in_file >> omega_basis_rescale_cst[i][j] ;
 
-      if ( omega_weights[i][j] < 0 ) 
+      if ( omega_basis_rescale_cst[i][j] < 0 ) 
 	{
 	  if (mpi_rank == 0)
 	  {
-	    printf("Warning: %dth weight in the %dth channel is negative %.4f. Changed to 1.0\n", j, i, omega_weights[i][j] );
-	    fprintf(log_file, "Warning: %dth weight in the %dth channel is negative %.4f. Changed to 1.0\n", j, i, omega_weights[i][j] );
+	    printf("Warning: %dth rescale constant in the %dth channel is negative %.4f. Changed to 1.0\n", j, i, omega_basis_rescale_cst[i][j] );
+	    fprintf(log_file, "Warning: %dth rescale constant in the %dth channel is negative %.4f. Changed to 1.0\n", j, i, omega_basis_rescale_cst[i][j] );
 	  }
-	  omega_weights[i][j] = 1.0 ;
+	  omega_basis_rescale_cst[i][j] = 1.0 ;
 	}
     }
 
@@ -540,7 +540,7 @@ void ISTA()
       for (int j = 0 ; j < basis_index_per_channel[i].size() ; j ++)
 	omega_vec[i][j] = vec_tmp[i][j] ;
 
-      g_cost = penalty_g_partial(i, omega_vec, omega_weights) ;
+      g_cost = penalty_g_partial(i, omega_vec, omega_basis_rescale_cst) ;
 
       /* 
        * Check if stop criteria is achieved, based on: 
@@ -662,7 +662,7 @@ void ISTA()
     for (int i = 0 ; i < channel_num ; i ++)
     {
       tmp += minus_log_likelihood_partial( i, omega_vec, min_ai, max_ai ) ;
-      tmp += penalty_g_partial( i, omega_vec, omega_weights ) ;
+      tmp += penalty_g_partial( i, omega_vec, omega_basis_rescale_cst ) ;
     }
 
     if (mpi_rank == 0) 
@@ -822,7 +822,7 @@ void FISTA()
       for (int j = 0 ; j < basis_index_per_channel[i].size() ; j ++)
 	omega_vec[i][j] = vec_tmp[i][j] ;
 
-      g_cost = penalty_g_partial(i, omega_vec, omega_weights) ;
+      g_cost = penalty_g_partial(i, omega_vec, omega_basis_rescale_cst) ;
 
       // record, if we find a new minimal cost
       if ( (iter_step == 0) || (fval_new + g_cost < min_cost[i]) )
@@ -979,7 +979,7 @@ void FISTA()
     for (int i = 0 ; i < channel_num ; i ++)
     {
       tmp += minus_log_likelihood_partial( i, omega_vec, min_ai, max_ai ) ;
-      tmp += penalty_g_partial( i, omega_vec, omega_weights ) ;
+      tmp += penalty_g_partial( i, omega_vec, omega_basis_rescale_cst ) ;
     }
 
     if (mpi_rank == 0) 
@@ -996,7 +996,7 @@ void FISTA()
 
 void grad_descent_smooth() 
 {
-  double residual, tmp ;
+  double residual, tmp , cnst ;
   int iter_step , stop_flag , prev_min_step ; 
   vector<vector<double> > omega_grad_vec ;
   ofstream out_file ;
@@ -1072,7 +1072,8 @@ void grad_descent_smooth()
       for (int j = 0 ; j < basis_index_per_channel[i].size() ; j ++)
       {
 	tmp = omega_vec[i][j] ;
-	vec_tmp[i][j] = omega_vec[i][j] - grad_dt * ( omega_grad_vec[i][j] + regular_lambda * omega_weights[i][j] * tmp / sqrt(tmp * tmp + l1_eps) ) ;
+	cnst = omega_basis_rescale_cst[i][j] ;
+	vec_tmp[i][j] = omega_vec[i][j] - grad_dt * ( omega_grad_vec[i][j] + regular_lambda * tmp / sqrt(tmp * tmp / (cnst * cnst) + l1_eps) / (cnst * cnst) ) ;
       }
 
       // compute residual
@@ -1083,7 +1084,7 @@ void grad_descent_smooth()
 	omega_vec[i][j] = vec_tmp[i][j] ;
 
       fval_new = minus_log_likelihood_partial(i, omega_vec, min_ai, max_ai ) ; 
-      g_cost = penalty_g_partial(i, omega_vec, omega_weights) ;
+      g_cost = penalty_g_partial( i, omega_vec, omega_basis_rescale_cst ) ;
 
       if ( (iter_step == 0) || (fval_new + g_cost < min_cost[i]) )
       {
@@ -1223,7 +1224,7 @@ void grad_descent_smooth()
     for (int i = 0 ; i < channel_num ; i ++)
     {
       tmp += minus_log_likelihood_partial( i, omega_vec, min_ai, max_ai ) ;
-      tmp += penalty_g_partial( i, omega_vec, omega_weights ) ;
+      tmp += penalty_g_partial( i, omega_vec, omega_basis_rescale_cst ) ;
     }
 
     if (mpi_rank == 0) 
