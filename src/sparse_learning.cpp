@@ -778,6 +778,12 @@ void FISTA()
       } else // decide step-size by backtracking
       {
 
+        /* 
+	 * In every iteration, Lbar is estimated based on local Lipschitz constant of \grad f. At the same time, Lbar is 
+         * always equal or larger than L0. This is slightly different from the paper by A. Beck and M. Teboulle, where Lbar 
+         * is estimated based on global Lipschitz constant.
+         * The advantage of this ``local'' version, is that maybe it leads to larger step-size.
+         */
 	Lbar = L0 ;
 
 	// evaluate the function at old point yk
