@@ -82,11 +82,11 @@ for idx in range(dim) :
      plt.ylim( 0, ub+2)
 
     xlabel('$t$', fontsize=fs, labelpad=-5)
-    title('$x^{(%d)}$' % idx, fontsize=fs)
+    title('$x^{(%d)}$' % (idx+1), fontsize=fs)
 #    lg = legend(bbox_to_anchor=(-0.0, -0.05, 1.0, 1.0), prop={'size':18})
 #    lg.draw_frame(False)
 #    plt.gcf().subplots_adjust(bottom=0.2) 
 
     fig.tight_layout()
    
-    savefig("../fig/ex2-x%d-traj.eps" % idx)
+    savefig("../fig/ex2-x%d-traj.eps" % (idx+1) )
