@@ -626,11 +626,11 @@ int main ( int argc, char * argv[] )
   if ( is_nonpositive(num_record_tail_cost) ) num_record_tail_cost = 5 ;
   if ( is_nonpositive(max_step_since_prev_min_cost) ) max_step_since_prev_min_cost = 1000 ;
 
-  grad_descent_smooth() ;
-
   // when reaction types are known and a channel has only one reaction, then
   // the parameter can be computed directly
   direct_compute_channel_with_single_reaction() ;
+
+  grad_descent_smooth() ;
 
   end = clock() ;
 
