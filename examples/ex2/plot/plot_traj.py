@@ -6,6 +6,9 @@
 
 """
 
+import matplotlib
+matplotlib.use('Agg')
+
 from pylab import *
 from numpy import *
 from os import listdir
@@ -49,6 +52,8 @@ for f in files[:num_file] :
 
 print "\n"
 
+pos = [0.5, 0.9]
+
 # print each component
 for idx in range(dim) :
     print "print the %dth component... " % (idx+1)
@@ -66,7 +71,7 @@ for idx in range(dim) :
         x = np.append(x, x[-1])
         ub = max(ub, max(x))
         traj_file.close()
-        plot( t_vec[f_idx], x, linewidth=3, color=lc[f_idx], label="traj %d" % f_idx)
+        plot( t_vec[f_idx], x, linewidth=3, color=lc[f_idx], label="traj %d" % (f_idx+1) )
         f_idx = f_idx + 1
 
     ax.tick_params(axis='x', labelsize=20)
@@ -83,9 +88,9 @@ for idx in range(dim) :
 
     xlabel('$t$', fontsize=fs, labelpad=-5)
     title('$x^{(%d)}$' % (idx+1), fontsize=fs)
-#    lg = legend(bbox_to_anchor=(-0.0, -0.05, 1.0, 1.0), prop={'size':18})
-#    lg.draw_frame(False)
-#    plt.gcf().subplots_adjust(bottom=0.2) 
+    lg = legend(bbox_to_anchor=(-0.0, -0.01, pos[idx], 1.0), prop={'size':18})
+    lg.draw_frame(False)
+    plt.gcf().subplots_adjust(bottom=0.2) 
 
     fig.tight_layout()
    

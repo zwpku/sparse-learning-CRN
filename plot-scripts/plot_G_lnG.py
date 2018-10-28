@@ -6,6 +6,9 @@
 
 """
 
+import matplotlib
+matplotlib.use('Agg')
+
 from pylab import *
 from numpy import *
 
