@@ -52,7 +52,7 @@ for f in files[:num_file] :
 
 print "\n"
 
-pos = [0.5, 0.9]
+pos = [0.5, 1.0]
 
 # print each component
 for idx in range(dim) :
@@ -81,14 +81,14 @@ for idx in range(dim) :
 #    plt.ylim( 0, ub+2)
 
     if idx==0 :
-#      plt.ylim( 1e-2, ub+2)
+      plt.ylim( 1, 5e4)
       ax.set_yscale('log')
     else :
      plt.ylim( 0, ub+2)
 
     xlabel('$t$', fontsize=fs, labelpad=-5)
     title('$x^{(%d)}$' % (idx+1), fontsize=fs)
-    lg = legend(bbox_to_anchor=(-0.0, -0.01, pos[idx], 1.0), prop={'size':18})
+    lg = legend(bbox_to_anchor=(-0.0, 0.01, pos[idx], 1.0), prop={'size':18})
     lg.draw_frame(False)
     plt.gcf().subplots_adjust(bottom=0.2) 
 
