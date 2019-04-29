@@ -57,6 +57,7 @@ xvec = np.linspace( -xb, xb, n, endpoint=True )
 
 # max(x,0)
 y_vec_0 = [ activation(x) for x in xvec ]   
+dy_vec_0 = [ (x>0) for x in xvec ]   
 
 # G(x) and G'(x), eps = 0.1
 eps = 0.1 
@@ -90,15 +91,20 @@ ax.title.set_position([.5, 1.01])
 fig_file_name = './geps.eps' 
 savefig(fig_file_name)
 
+print xvec[n/2-1],xvec[n/2]
+dy_vec_0[n/2-1]=nan
+
 plt.clf()
 ax= gca()
+plot( xvec, dy_vec_0, linestyle='-', linewidth=2, color='b', label='$\epsilon=0$' ) 
 plot( xvec, dy_vec, linestyle=':', linewidth=3, color=lc[1], label='$\epsilon=0.1$' ) 
 plot( xvec, dy_vec_1, linestyle='-', linewidth=3, color='k', label='$\epsilon=0.3$' ) 
+plot((0,0), (0,1), linestyle=':', linewidth=2, color='b')
 
 ax.set_aspect('auto')
 xticks(np.arange(-xb, xb+1, step=0.2), fontsize=25)
 yticks(fontsize=24)
-legend(bbox_to_anchor=(0.01,0.89), loc="upper left", frameon=False, fontsize=23)
+legend(bbox_to_anchor=(0.01,0.95), loc="upper left", frameon=False, fontsize=23)
 
 plt.xlim(-xb, xb)
 plt.ylim(-0.05, 1.1)
