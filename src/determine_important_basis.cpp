@@ -1,6 +1,7 @@
 #include "sparse_learning.h"
 
 double val_ai(int channel_idx, vector<int> &state, vector<vector<double> > & coeff_vec );
+double G(double x) ;
 
 /*
  *
@@ -102,18 +103,20 @@ void read_omega_coefficients( int i, vector<vector<double> > & coeff_vec )
   in_file >> itmp ;
   coeff_vec[i].resize(itmp) ;
   omega_basis_rescale_cst[i].resize(itmp) ;
-
+  
   for (int j = 0 ; j < itmp ; j ++)
   {
     in_file >> coeff_vec[i][j] ; 
+    cout << coeff_vec[i][j] << ' ' ;
     omega_basis_rescale_cst[i][j] = 1.0 ;
   }
+  cout << endl ;
   in_file.close();
 }
 
 void read_basis()
 {
-  int itmp, num_basis ;
+  int itmp ;
   char buf[100];
   ifstream in_file ;
 
@@ -134,6 +137,8 @@ void read_basis()
   }
 
   in_file.close() ;
+
+  basis_index_per_channel.resize(channel_num) ;
 
   // read basis functions for each channel
   for ( int i = 0 ; i < channel_num ; i ++ )
@@ -157,34 +162,44 @@ void read_basis()
 void find_important_basis_in_traj() 
 {
   double tmp , tot_ai ;
-  int important_flag , itmp ;
+  ofstream out_file ;
+  vector<double> stat_vec ;
+  int tot_state_num ;
 
   omega_vec.resize( channel_num ) ;
   omega_basis_rescale_cst.resize( channel_num ) ;
 
+  out_file.open("./output/ratio_of_basis_in_ai.txt");
+
   for (int c_idx = 0 ; c_idx < channel_num ; c_idx ++)
   {
-     read_omega_coefficients(c_idx, omega_vec) ;
-     for (int j = 0 ; j < num_basis ; j ++)
-	  {
-	    important_flag = 0;
-	    // loop for each trajectory 
-	    for (int traj_idx = 0 ; traj_idx < N_traj ; traj_idx ++)
-	      for (int i = 0; i < num_state_in_traj[traj_idx] ; i ++) // loop for each jump (or reaction)
-	    {
-	      // compute the value of basis function at the current state
-	      tmp = omega_vec[c_idx][j] * val_basis_funct(j, traj_vec[traj_idx][i]) ;
-	      tot_ai = val_ai(c_idx, traj_vec[traj_idx][i], omega_vec);
-	      if (fabs(tmp / tot_ai) > 0.1)
-		{
-		  important_flag = 1;
-		  break ;
-		}
-	    }
-	    if (important_flag == 1)
-		printf("%dth basis is important for channel %d\n", j, c_idx) ;
-	  }
-   }
+    read_omega_coefficients(c_idx, omega_vec) ;
+    stat_vec.resize(basis_index_per_channel[c_idx].size()) ;
+    for (int j = 0 ; j < basis_index_per_channel[c_idx].size() ; j ++)
+      stat_vec[j] = 0.0 ;
+    tot_state_num = 0 ;
+    // loop for each trajectory 
+    for (int traj_idx = 0 ; traj_idx < N_traj ; traj_idx ++)
+      {
+       for (int i = 0; i < num_state_in_traj[traj_idx] ; i ++) // loop for each jump (or reaction)
+	{
+               tot_ai = 0 ;
+               for (int idx = 0 ; idx < channel_num ; idx ++)
+		    tot_ai += G(val_ai(idx, traj_vec[traj_idx][i], omega_vec)) ;
+    	       for (int j = 0 ; j < basis_index_per_channel[c_idx].size() ; j ++)
+                  {
+	       // compute the value of basis function at the current state
+		  tmp = omega_vec[c_idx][j] * val_basis_funct(j, traj_vec[traj_idx][i]) ;
+		  stat_vec[j] += fabs(tmp / tot_ai) ; 
+                  }
+	}
+	    tot_state_num += num_state_in_traj[traj_idx] ;
+      }
+    for (int j = 0 ; j < stat_vec.size() ; j ++)
+      out_file << stat_vec[j] / tot_state_num << ' ';
+    out_file << endl ;
+  }
+  out_file.close() ;
 }
 
 int main ( int argc, char * argv[] ) 
@@ -216,7 +231,7 @@ int main ( int argc, char * argv[] )
   start = clock() ;
 
   process_data() ;
-
+  
   read_basis() ;
 
   find_important_basis_in_traj() ;
