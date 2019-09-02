@@ -314,7 +314,9 @@ double val_basis_funct(int basis_idx, vector<int> &state)
   double s ;
   int idx1, idx2 ;
 
-  if (basis_vec[basis_idx].size() == 1) // linear basis 
+  if (basis_vec[basis_idx].size() == 0) // constant basis
+    s = 1.0 ;
+  else if (basis_vec[basis_idx].size() == 1) // linear basis 
   {
     idx1 = basis_vec[basis_idx][0] ;
     s = state[idx1] ;

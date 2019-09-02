@@ -308,6 +308,10 @@ void write_basis_functions()
   // initialize the vector before including any basis functions
   basis_vec.resize(0) ;
 
+  // include constant function one as basis function
+  reactant_idx.resize(0) ; 
+  basis_vec.push_back( reactant_idx ) ;
+
   // include polynomial functions of order 1 (linear) as basis functions
   reactant_idx.resize(1) ; 
   for (int i =0 ; i < n; i++)
@@ -327,10 +331,10 @@ void write_basis_functions()
 	reactant_idx[1] = j ;
 	basis_vec.push_back( reactant_idx ) ;
       }
-    num_basis = n * (3 + n) / 2 ;   
+    num_basis = 1 + n * (3 + n) / 2 ;   
   } else 
   {
-    num_basis = n ; 
+    num_basis = 1 + n ; 
   }
 
   // initialization

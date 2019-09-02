@@ -31,19 +31,19 @@ endif
 #
 # 	3. the directory containing mpi.h, required by MPICH.
 #
-LOCAL_DIR=/home/mi/weizhang/local/
+LOCAL_DIR=/home/weizhang/local/
 INCLUDES=-I$(LOCAL_DIR)/include 
 
 LDFLAGS=-Wl,-rpath,$(LOCAL_DIR)/lib -L$(LOCAL_DIR)/lib -lm -lpthread -lconfig++ -lranlib 
 
-SOURCES=param.cpp config.cpp initialize.cpp utils.cpp ssa.cpp sparse_learning.cpp prepare.cpp
+SOURCES=param.cpp config.cpp initialize.cpp utils.cpp ssa.cpp sparse_learning.cpp prepare.cpp determine_important_basis.cpp
 
 OBJECTS=$(SOURCES:.cpp=.o)
 
 .cpp.o:
 	$(CC) $(CFLAGS) $(INCLUDES) -c $< -o $@
 
-all : ssa sparse_learning prepare mle
+all : ssa sparse_learning prepare mle determine_important_basis
 
 ssa : ssa.o param.o config.o initialize.o utils.o
 	$(CC) $^ -o $@ $(CFLAGS) $(LDFLAGS)
@@ -57,5 +57,9 @@ sparse_learning : sparse_learning.o param.o config.o initialize.o utils.o
 prepare : prepare.o param.o config.o initialize.o utils.o
 	$(CC) $^ -o $@ $(CFLAGS) $(LDFLAGS)
 
+determine_important_basis : determine_important_basis.o param.o config.o initialize.o utils.o
+	$(CC) $^ -o $@ $(CFLAGS) $(LDFLAGS)
+
+
 clean:
-	rm -f $(OBJECTS) ssa sparse_learning prepare mle
+	rm -f $(OBJECTS) ssa sparse_learning prepare mle determine_important_basis
