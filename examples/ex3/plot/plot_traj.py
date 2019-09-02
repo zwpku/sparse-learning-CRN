@@ -23,11 +23,11 @@ lc = ['b', 'k', 'g', 'r', 'y']
 fs = 30
 
 # the final time of each trajectory
-max_t = 10
+max_t = 100
 print "\nMaximal time = %.6f\n" % max_t
 
 # find all trajectory files  
-file_name_idx = [68, 16, 2, 7, 15] 
+file_name_idx = [5, 6, 7, 8, 9] 
 files = [ "%s/traj_%d.txt" % (data_dir, i) for i in file_name_idx]
 
 num_file = min( max_num_file, len(files) )
@@ -52,7 +52,8 @@ for f in files[:num_file] :
 
 print "\n"
 
-pos = [0.5, 1.0]
+pos = [1.0, 1.02, 1.0, 0.35]
+ylim_add = [2, 3, 100, 50]
 
 # print each component
 for idx in range(dim) :
@@ -80,18 +81,18 @@ for idx in range(dim) :
     plt.xlim( 0, max_t )
 #    plt.ylim( 0, ub+2)
 
-    if idx==0 :
-      plt.ylim( 1, 5e4)
-      ax.set_yscale('log')
-    else :
-     plt.ylim( 0, ub+2)
+#    if idx==0 :
+#      plt.ylim( 1e-2, ub+2)
+#      ax.set_yscale('log')
+#    else :
+    plt.ylim( -1, ub + ylim_add[idx] )
 
     xlabel('$t$', fontsize=fs, labelpad=-5)
     title('$x^{(%d)}$' % (idx+1), fontsize=fs)
-    lg = legend(bbox_to_anchor=(-0.0, 0.01, pos[idx], 1.0), prop={'size':18})
+    lg = legend(bbox_to_anchor=(-0.0, 0.00, pos[idx], 1.0), prop={'size':18})
     lg.draw_frame(False)
     plt.gcf().subplots_adjust(bottom=0.2) 
 
     fig.tight_layout()
    
-    savefig("../fig/ex2-x%d-traj.eps" % (idx+1) )
+    savefig("../fig/ex3-x%d-traj.eps" % (idx+1) )
