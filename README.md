@@ -1,6 +1,12 @@
 # sparse-learning-CRN
-Data-based sparsity learning of chemical reaction networks (CRNs)
+Data-based sparsity learning of chemical reaction networks (CRNs).
 
+These codes have been used to produce numerical results of the paper:
+
+[Learning chemical reaction networks from trajectory data, Siam J. Appl. Dyn. Syst., 18(4), pp. 2000-2046, 2019
+](https://doi.org/10.1137/19M1265880).
+
+Arxiv version is [here](https://arxiv.org/abs/1902.04920).
 
 ## DEPENDENCIES
 
@@ -44,3 +50,4 @@ To build a parallel code (optional), we also need
 ```
         make 
 ```
+
